@@ -67,7 +67,7 @@ def update_zone(osmnx_name, name):
     session.add(zone_generation)
     try:
         session.commit()
-        centerlines.to_postgis("Centerlines", con, if_exists="append")
+        centerlines.to_postgis("centerlines", con, if_exists="append")
     except:
         session.rollback()
         raise
