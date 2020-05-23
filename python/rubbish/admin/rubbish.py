@@ -2,9 +2,8 @@ import click
 import os
 import subprocess
 
-# TODO: proper import via package semantics
-import sys; sys.path.append("../")
-from common.db import set_db as _set_db, reset_db as _reset_db, get_db as _get_db
+from rubbish.common.db import set_db as _set_db, reset_db as _reset_db, get_db as _get_db
+from .zones import update_zone as _update_zone
 
 @click.group()
 def cli():
@@ -48,9 +47,16 @@ def reset_db():
     pass
 
 # TODO: update-zone
+@click.command(name="update-zone", short_help="Write a new zone generation in and reticulates.")
+@click.argument("osmnx_name")
+@click.option("-n", "--name", help="Optional name, otherwise copies osmnx_name.")
+def update_zone(osmnx_name, name):
+    _update_zone(osmnx_name, name)
+
 # TODO: rollback-zone
 
 cli.add_command(connect)
 cli.add_command(get_db)
 cli.add_command(set_db)
 cli.add_command(reset_db)
+cli.add_command(update_zone)

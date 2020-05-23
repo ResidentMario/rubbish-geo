@@ -22,22 +22,22 @@ def upgrade():
     # Zones are meaningful regions, e.g. "San Francisco", meant to be imported all at once.
     # Zones have zone generations. Centerlines are keyed to specific zone generations.
     op.create_table(
-        "zones",
+        "Zones",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("name", sa.String(64), nullable=False),
         sa.Column("osmnx_name", sa.String(64), nullable=False)  # used by the importer
     )
     # Zone generations allow for changes in the street grid over time.
     op.create_table(
-        "zone_generations",
+        "ZoneGenerations",
         sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("zone_id", sa.Integer, sa.ForeignKey("zones.id"), nullable=False),
+        sa.Column("zone_id", sa.Integer, sa.ForeignKey("Zones.id"), nullable=False),
         sa.Column("generation", sa.Integer, nullable=False),
         sa.Column("final_timestamp", sa.DateTime, nullable=True)  # NULL means "current"
     )
     # Sectors are areas of interest (e.g. neighborhoods). These are mainly useful for UX.
     op.create_table(
-        "sectors",
+        "Sectors",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("geometry", Geometry("MULTIPOLYGON"))
     )
@@ -46,20 +46,20 @@ def upgrade():
     # Rubbish pickups are keyed to centerline and side-of-street.
     # Centerlines are keyed to a zone and a range of zone generations.
     op.create_table(
-        "centerlines",
+        "Centerlines",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("geometry", Geometry("LINESTRING")),
         sa.Column("first_zone_generation", sa.Integer),
         sa.Column("last_zone_generation", sa.Integer, nullable=True),
-        sa.Column("zone_id", sa.Integer, sa.ForeignKey("zones.id"), nullable=False)
+        sa.Column("zone_id", sa.Integer, sa.ForeignKey("Zones.id"), nullable=False)
     )
     # Pickups are the event type of interest.
     # Note that most non-geometric properties are in Firebase.
     op.create_table(
-        "pickups",
+        "Pickups",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("firebase_id", sa.Integer, nullable=False),  # foreign key to the app DB
-        sa.Column("centerline_id", sa.Integer, sa.ForeignKey("centerlines.id"), nullable=False),
+        sa.Column("centerline_id", sa.Integer, sa.ForeignKey("Centerlines.id"), nullable=False),
         sa.Column("type", sa.Integer, nullable=False),
         sa.Column("timestamp", sa.DateTime, nullable=False),
         sa.Column("geometry", Geometry("POINT"), nullable=False),
@@ -70,8 +70,8 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_table("pickups")
-    op.drop_table("centerlines")
-    op.drop_table("sectors")
-    op.drop_table("zone_generations")
-    op.drop_table("zones")
+    op.drop_table("Pickups")
+    op.drop_table("Centerlines")
+    op.drop_table("Sectors")
+    op.drop_table("ZoneGenerations")
+    op.drop_table("Zones")

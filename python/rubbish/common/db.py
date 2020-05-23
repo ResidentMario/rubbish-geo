@@ -1,4 +1,7 @@
-# Generic DB operations unrelated to application state.
+"""
+Generic DB operations unrelated to application state.
+"""
+
 import click
 import pathlib
 import os
@@ -27,15 +30,21 @@ def get_db():
     with open(APPDIR / "config", "r") as f:
         return f.read()
 
-def reset_db():
+def db_sessionmaker():
     """
-    Resets the current database, deleting all data.
+    Returns a sessionmaker object for creating DB sessions.
     """
     connstr = get_db()
     if connstr == None:
         raise ValueError("connection string not set, run set_db first")
     engine = sa.create_engine(connstr)
-    session = sessionmaker(bind=engine)()
+    return sessionmaker(bind=engine)
+
+def reset_db():
+    """
+    Resets the current database, deleting all data.
+    """
+    session = db_sessionmaker()()
     try:
         session.query(Pickup).delete(synchronize_session=False)
         session.query(Centerline).delete(synchronize_session=False)

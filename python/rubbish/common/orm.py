@@ -6,7 +6,7 @@ from geoalchemy2 import Geometry
 Base = declarative_base()
 
 class Zone(Base):
-    __tablename__ = "zones"
+    __tablename__ = "Zones"
     id = sa.Column(sa.Integer, primary_key=True)
     name = sa.Column(sa.String(64), nullable=False)
     osmnx_name = sa.Column(sa.String(64), nullable=False)
@@ -16,9 +16,9 @@ class Zone(Base):
         return f"<Zone id={self.id} name={self.name} osxmn_name={self.osmnx_name}>"
 
 class ZoneGeneration(Base):
-    __tablename__ = "zone_generations"
+    __tablename__ = "ZoneGenerations"
     id = sa.Column(sa.Integer, primary_key=True)
-    zone_id = sa.Column(sa.Integer, sa.ForeignKey("zones.id"))
+    zone_id = sa.Column(sa.Integer, sa.ForeignKey("Zones.id"))
     generation = sa.Column(sa.Integer)
     final_timestamp = sa.Column(sa.DateTime)
     zone = relationship("Zone", back_populates="zone_generations")
@@ -30,7 +30,7 @@ class ZoneGeneration(Base):
         )
 
 class Sector(Base):
-    __tablename__ = "sectors"
+    __tablename__ = "Sectors"
     id = sa.Column(sa.Integer, primary_key=True)
     geometry = sa.Column(Geometry)
 
@@ -38,12 +38,12 @@ class Sector(Base):
         return f"<Sector id={self.id} geometry={self.geometry}>"
 
 class Centerline(Base):
-    __tablename__ = "centerlines"
+    __tablename__ = "Centerlines"
     id = sa.Column(sa.Integer, primary_key=True)
     geometry = sa.Column("geometry", Geometry("LINESTRING"))
     first_zone_generation = sa.Column("first_zone_generation", sa.Integer)
     last_zone_generation = sa.Column("last_zone_generation", sa.Integer, nullable=True)
-    zone_id = sa.Column("zone_id", sa.Integer, sa.ForeignKey("zones.id"), nullable=False)
+    zone_id = sa.Column("zone_id", sa.Integer, sa.ForeignKey("Zones.id"), nullable=False)
     pickups = relationship("Pickup", back_populates="centerline")
 
     def __repr__(self):
@@ -55,11 +55,11 @@ class Centerline(Base):
         )
 
 class Pickup(Base):
-    __tablename__ = "pickups"
+    __tablename__ = "Pickups"
     id = sa.Column("id", sa.Integer, primary_key=True)
     firebase_id = sa.Column("firebase_id", sa.Integer, nullable=False)
     centerline_id =\
-        sa.Column("centerline_id", sa.Integer, sa.ForeignKey("centerlines.id"), nullable=False)
+        sa.Column("centerline_id", sa.Integer, sa.ForeignKey("Centerlines.id"), nullable=False)
     type = sa.Column("type", sa.Integer, nullable=False)
     timestamp = sa.Column("timestamp", sa.DateTime, nullable=False)
     geometry = sa.Column("geometry", Geometry("POINT"), nullable=False)
