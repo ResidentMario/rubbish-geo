@@ -1,3 +1,7 @@
+"""
+The rubbish-admin CLI application.
+"""
+
 import click
 import os
 import subprocess
@@ -46,7 +50,6 @@ def reset_db():
         print("invalid input, must reply y/n")
     pass
 
-# TODO: update-zone
 @click.command(name="update-zone", short_help="Write a new zone generation in and reticulates.")
 @click.argument("osmnx_name")
 @click.option("-n", "--name", help="Optional name, otherwise copies osmnx_name.")

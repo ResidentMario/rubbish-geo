@@ -9,7 +9,7 @@ Create Date: 2020-05-22 13:04:13.231880
 """
 from alembic import op
 import sqlalchemy as sa
-from geoalchemy2 import Geography
+from geoalchemy2 import Geometry
 
 # revision identifiers, used by Alembic.
 revision = "a3fa9dac3f4e"
@@ -39,7 +39,7 @@ def upgrade():
     op.create_table(
         "sectors",
         sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("geometry", Geography("MULTIPOLYGON"))
+        sa.Column("geometry", Geometry("MULTIPOLYGON", srid=4326))
     )
     # Centerlines are the workhorse of the Rubbish app.
     # Each centerline is an individual street segment of a constrained complexity.
@@ -48,7 +48,7 @@ def upgrade():
     op.create_table(
         "centerlines",
         sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("geometry", Geography("LINESTRING")),
+        sa.Column("geometry", Geometry("LINESTRING", srid=4326)),
         sa.Column("first_zone_generation", sa.Integer),
         sa.Column("last_zone_generation", sa.Integer, nullable=True),
         sa.Column("zone_id", sa.Integer, sa.ForeignKey("zones.id"), nullable=False)
@@ -62,8 +62,8 @@ def upgrade():
         sa.Column("centerline_id", sa.Integer, sa.ForeignKey("centerlines.id"), nullable=False),
         sa.Column("type", sa.Integer, nullable=False),
         sa.Column("timestamp", sa.DateTime, nullable=False),
-        sa.Column("geometry", Geography("POINT"), nullable=False),
-        sa.Column("snapped_geometry", Geography("POINT"), nullable=False),
+        sa.Column("geometry", Geometry("POINT", srid=4326), nullable=False),
+        sa.Column("snapped_geometry", Geometry("POINT", srid=4326), nullable=False),
         sa.Column("linear_reference", sa.Float(precision=3)),
         sa.Column("curb", sa.Integer, nullable=False),  # side-of-street
     )
