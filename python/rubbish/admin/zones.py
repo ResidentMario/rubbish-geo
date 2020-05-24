@@ -12,7 +12,11 @@ import sqlalchemy as sa
 def update_zone(osmnx_name, name):
     session = db_sessionmaker()()
 
-    # munge zone
+    # insert zone
+    # NOTE: flush writes DB ops to the database's transactional buffer without actually
+    # performing a commit (and closing the transaction). This is important because it 
+    # allows us to reserve a primary key ID from the corresponding auto-increment 
+    # sequence, which we need when we use it as a foreign key. See SO#620610.
     if name is None:
         name = osmnx_name
     zone_query = (session
@@ -23,16 +27,13 @@ def update_zone(osmnx_name, name):
     zone_already_exists = zone_query is not None
     if zone_already_exists:
         zone = zone_query
+        session.close()
     else:
-        largest_zone_by_id = (session
-            .query(Zone)
-            .order_by(sa.desc(Zone.id))
-            .first()
-        )
-        next_zone_id = largest_zone_by_id.id + 1 if largest_zone_by_id else 0
-        zone = Zone(id=next_zone_id, osmnx_name=osmnx_name, name=name)
+        zone = Zone(osmnx_name=osmnx_name, name=name)
+        session.add(zone)
+        session.flush()
 
-    # munge zone generation
+    # modify old and insert new zone generation
     if zone_already_exists:
         zone_generation_query = (session
             .query(ZoneGeneration)
@@ -43,18 +44,13 @@ def update_zone(osmnx_name, name):
         next_zone_generation = zone_generation_query[-1].generation + 1
     else:
         next_zone_generation = 0
-    largest_zone_generation_by_id = (session
-        .query(ZoneGeneration)
-        .order_by(sa.desc(ZoneGeneration.id))
-        .first()
-    )
-    next_zone_generation_id =\
-        largest_zone_generation_by_id.id + 1 if largest_zone_generation_by_id else 0
     zone_generation = ZoneGeneration(
-        id=next_zone_generation_id, zone_id=zone.id,
-        generation=next_zone_generation, final_timestamp=None
+        zone_id=zone.id, generation=next_zone_generation, final_timestamp=None
     )
+    session.add(zone_generation)
+    session.flush()
 
+    # insert centerlines
     # TODO: intergenerational reticulation.
     #
     # The current behavior is that every time a zone is overwritten, every centerline
@@ -67,7 +63,7 @@ def update_zone(osmnx_name, name):
     G = ox.graph_from_place(osmnx_name, network_type="drive")
     _, edges = ox.graph_to_gdfs(G)
     centerlines = gpd.GeoDataFrame(
-        {"first_zone_generation": next_zone_generation_id, "last_zone_generation": None,
+        {"first_zone_generation": zone_generation.id, "last_zone_generation": None,
          "zone_id": zone.id},
         index=range(len(edges)),
         geometry=edges.geometry
@@ -82,7 +78,7 @@ def update_zone(osmnx_name, name):
         .all()
     )
     for previously_current_centerline in previously_current_centerlines:
-        previously_current_centerline.last_zone_generation = next_zone_generation_id - 1
+        previously_current_centerline.last_zone_generation = next_zone_generation - 1
 
     # Set the current zone generation's final timestamp.
     current_zone_generation = (session
@@ -99,6 +95,10 @@ def update_zone(osmnx_name, name):
 
     try:
         session.commit()
+        # TODO: if the session (which writes zone and zone_generation information) clears, but the
+        # centerlines write (which geopandas executes in its own separate transaction, but which
+        # depends on the success of the first transaction due to foreign key constrains) fails,
+        # this will technically result in inconsistent state. For now I'm ignoring this problem.
         centerlines.to_postgis("centerlines", con, if_exists="append")
     except:
         session.rollback()
