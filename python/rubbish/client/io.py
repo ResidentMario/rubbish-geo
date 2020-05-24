@@ -3,15 +3,24 @@ Python client library I/O methods.
 """
 import sqlalchemy as sa
 from rubbish.common.db import db_sessionmaker
-from rubbish.common.orm import Pickup
+from rubbish.common.orm import Pickup, Centerline
 
-try:
-    session = db_sessionmaker()()
-except:
-    session = None
+sessionmaker = db_sessionmaker()
 
+# TODO:
+# Two-stage KNN seach to match centerline (https://postgis.net/workshops/postgis-intro/knn.html)
+# Linear reference snapping.
+# But, need to know API input signature first. E.g. is side-of-street a property?
 def _munge_pickups(pickups):
-    pass
+    session = sessionmaker()
+    for pickup in pickups:
+        return (session
+            .query(Centerline)
+            .order_by(Centerline.geometry.distance_centroid('SRID=4326;POINT(-71.064544 42.28787)'))
+            .limit(10)
+            .all()
+        )
+    session.close()
 
 def write_pickups(pickups):
     """
@@ -26,4 +35,5 @@ def write_pickups(pickups):
 
     All other keys included in the dict will be silently ignored.
     """
+    return _munge_pickups(pickups)
     pass
