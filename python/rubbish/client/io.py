@@ -8,7 +8,7 @@ from rubbish.common.orm import Pickup, Centerline
 sessionmaker = db_sessionmaker()
 
 # TODO:
-# Two-stage KNN seach to match centerline (https://postgis.net/workshops/postgis-intro/knn.html)
+# Two-stage KNN search to match centerline (https://postgis.net/workshops/postgis-intro/knn.html)
 # Linear reference snapping.
 # But, need to know API input signature first. E.g. is side-of-street a property?
 def _munge_pickups(pickups):
@@ -27,13 +27,16 @@ def write_pickups(pickups):
     Writes pickups to the database. Pickups is expected to be a list of entries in the format:
 
     ```
-    {"firebase_id": <int>
-     "type": <int, see key in docs>
-     "timestamp": <int; UNIX timestamp>
+    {"firebase_id": <int>,
+     "type": <int, see key in docs>,
+     "timestamp": <int; UNIX timestamp>,
+     "lr": <int; user indication of what side of the street the pickup occurred on>,
      "geometry": <str; POINT in WKT format>}
     ```
 
     All other keys included in the dict will be silently ignored.
+
+    This list is to correspond with a single rubbish run, with items sequenced in the order in
+    which the pickups were made.
     """
     return _munge_pickups(pickups)
-    pass

@@ -3,3 +3,5 @@
 __pycache__/
 *.egg-info
 .vscode/
+test_alembic.ini
+.pytest_cache/
