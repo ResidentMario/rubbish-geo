@@ -5,3 +5,4 @@ __pycache__/
 .vscode/
 test_alembic.ini
 .pytest_cache/
+default.profraw

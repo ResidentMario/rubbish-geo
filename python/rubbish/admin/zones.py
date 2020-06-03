@@ -9,7 +9,14 @@ from rubbish.common.db import db_sessionmaker, get_db
 from rubbish.common.orm import Zone, ZoneGeneration, Centerline
 import sqlalchemy as sa
 
-def update_zone(osmnx_name, name):
+def update_zone(osmnx_name, name, centerlines=None):
+    """
+    Updates a zone, plopping the new centerlines into the database.
+
+    The `osmnx_name` and `name` arguments map to database fields.
+    
+    The optional `centerlines` argument is used to avoid a network request in testing.
+    """
     session = db_sessionmaker()()
 
     # insert zone
@@ -60,16 +67,17 @@ def update_zone(osmnx_name, name):
     # The long-term correct behavior would be to merge the old and new street grid:
     # overwrite only where there are changes, and perform smart reticulation of points
     # when doing so is useful.
-    G = ox.graph_from_place(osmnx_name, network_type="drive")
-    _, edges = ox.graph_to_gdfs(G)
-    centerlines = gpd.GeoDataFrame(
-        {"first_zone_generation": zone_generation.id, "last_zone_generation": None,
-         "zone_id": zone.id},
-        index=range(len(edges)),
-        geometry=edges.geometry
-    )
-    centerlines.crs = "epsg:4326"
-    con = sa.create_engine(get_db())
+    if centerlines is None:
+        G = ox.graph_from_place(osmnx_name, network_type="drive")
+        _, edges = ox.graph_to_gdfs(G)
+        centerlines = gpd.GeoDataFrame(
+            {"first_zone_generation": zone_generation.id, "last_zone_generation": None,
+            "zone_id": zone.id},
+            index=range(len(edges)),
+            geometry=edges.geometry
+        )
+        centerlines.crs = "epsg:4326"
+    conn = sa.create_engine(get_db())
 
     # Cap the previous centerline generations (see previous comment).
     previously_current_centerlines = (session
@@ -99,7 +107,7 @@ def update_zone(osmnx_name, name):
         # centerlines write (which geopandas executes in its own separate transaction, but which
         # depends on the success of the first transaction due to foreign key constrains) fails,
         # this will technically result in inconsistent state. For now I'm ignoring this problem.
-        centerlines.to_postgis("centerlines", con, if_exists="append")
+        centerlines.to_postgis("centerlines", conn, if_exists="append")
     except:
         session.rollback()
         raise

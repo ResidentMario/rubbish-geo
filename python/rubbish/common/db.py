@@ -46,11 +46,11 @@ def reset_db():
     """
     session = db_sessionmaker()()
     try:
-        session.query(Pickup).delete(synchronize_session=False)
-        session.query(Centerline).delete(synchronize_session=False)
-        session.query(Sector).delete(synchronize_session=False)
-        session.query(ZoneGeneration).delete(synchronize_session=False)
-        session.query(Zone).delete(synchronize_session=False)
+        session.query(Pickup).delete()
+        session.query(Centerline).delete()
+        session.query(Sector).delete()
+        session.query(ZoneGeneration).delete()
+        session.query(Zone).delete()
         session.commit()
     except:
         session.rollback()
