@@ -65,8 +65,17 @@ class TestUpdateZone(unittest.TestCase):
         assert zone_generations[0].final_timestamp > datetime.now() - timedelta(hours=1)
         assert zone_generations[0].zone_id == zones[0].id
 
-    # TODO
-    # @clean_db
-    # @alias_test_db
-    # def testExistingZoneWrite(self):
-    #     pass
+    @clean_db
+    @alias_test_db
+    def testExistingZoneIdempotentWrite(self):
+        # idempotent in the sense that none of the centerlines have actually changed
+        update_zone("Piedmont, California", "Foo, Bar", centerlines=self.centerlines)
+        update_zone("Piedmont, California", "Foo, Bar", centerlines=self.centerlines)
+
+        zones = self.session.query(Zone).all()
+        assert len(zones) == 1
+
+        zone_generations = self.session.query(ZoneGeneration).all()
+        assert len(zone_generations) == 2
+        assert zone_generations[0].id == 1
+        assert zone_generations[1].id == 2
