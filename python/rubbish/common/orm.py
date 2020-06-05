@@ -47,6 +47,7 @@ class Centerline(Base):
     osmid = sa.Column("osmid", sa.Integer, nullable=False)
     name = sa.Column("name", sa.String, nullable=False)
     pickups = relationship("Pickup", back_populates="centerline")
+    blockface_statistics = relationship("BlockfaceStatistic", back_populates="centerline")
 
     def __repr__(self):
         return (
@@ -77,4 +78,21 @@ class Pickup(Base):
             f"""centerline_id={self.centerline_id} firebase_id={self.firebase_id} """
             f"""type={self.type} timestamp={self.timestamp} """
             f"""linear_reference={self.linear_reference} curb={self.curb}>"""
+        )
+
+class BlockfaceStatistic(Base):
+    __tablename__ = "blockface_statistics"
+    id = sa.Column("id", sa.Integer, primary_key=True)
+    centerline_id =\
+        sa.Column("centerline_id", sa.Integer, sa.ForeignKey("centerlines.id"), nullable=False)
+    curb = sa.Column("curb", sa.Integer, nullable=False)
+    rubbish_per_meter = sa.Column("rubbish_per_meter", sa.Float, nullable=False)
+    num_runs = sa.Column("num_runs", sa.Integer, nullable=False)
+    centerline = relationship("Centerline", back_populates="blockface_statistics")
+
+    def __repr__(self):
+        return (
+            f"""<BlockfaceStatistic id={self.id} centerline_id={self.centerline_id} """
+            f"""curb={self.curb} rubbish_per_meter={self.rubbish_per_meter} """
+            f"""num_runs={self.num_runs}>"""
         )

@@ -9,7 +9,7 @@ import warnings
 from datetime import datetime, timedelta
 
 from rubbish.common.db import db_sessionmaker
-from rubbish.common.orm import Pickup, Centerline
+from rubbish.common.orm import Pickup, Centerline, BlockfaceStatistic
 from rubbish.common.consts import RUBBISH_TYPES, RUBBISH_TYPE_MAP
 
 def _munge_pickups(pickups):
@@ -64,6 +64,7 @@ def _munge_pickups(pickups):
     # TODO: it may be possible to significantly speed this process up by precomputing areas using
     # morphological tesselation.
     session = db_sessionmaker()()
+    centerline_objs, pickup_objs = dict(), dict()
     for pickup in pickups:
         orig_point = pickup["geometry"]
         orig_point_wkt = f"SRID=4326;{str(orig_point)}"
@@ -113,10 +114,69 @@ def _munge_pickups(pickups):
             linear_reference=linear_reference,
             curb=0 if pickup['curb'] == 'left' else 1
         )
+
+        if match.id not in centerline_objs:
+            centerline_objs[match.id] = (match, match_geom)
+        if match.id in pickup_objs:
+            pickup_objs[match.id][pickup['curb']].append(pickup_obj)
+        else:
+            pickup_objs[match.id] = {'left': [], 'right': []}
+            pickup_objs[match.id][pickup['curb']].append(pickup_obj)
         session.add(pickup_obj)
 
-    # TODO: curb corrections
-    # TODO: blockface statistics calculations
+    # TODO: curb correction logic
+
+    # percentile calculation logic
+    for centerline_id in centerline_objs:
+        for curb in ['left', 'right']:
+            centerline, centerline_geom = centerline_objs[centerline_id]
+            matching_pickups = pickup_objs[centerline_id][curb]
+            curb_as_int = 0 if curb == 'left' else 1
+
+            if len(matching_pickups) <= 1:
+                continue
+
+            linear_ref_min, linear_ref_max = 1, 0
+            for matching_pickup in matching_pickups:
+                linear_ref = matching_pickup.linear_reference
+                if linear_ref < linear_ref_min:
+                    linear_ref_min = linear_ref
+                if linear_ref > linear_ref_max:
+                    linear_ref_max = linear_ref
+
+            # skip if the run covered <50% of the length of the street
+            linear_ref_coverage = linear_ref_max - linear_ref_min
+            if linear_ref_coverage < 0.5:
+                continue
+
+            n_matching_pickups = len(matching_pickups)
+            inferred_n_pickups = n_matching_pickups / linear_ref_coverage
+            # TODO: store and use geographic distance instead of Cartesian distance.
+            # TODO: also scale against curb width, but need to get that info somehow however?
+            inferred_pickup_density = inferred_n_pickups / centerline_geom.length
+            prior_information = (session
+                .query(BlockfaceStatistic)
+                .filter(
+                    BlockfaceStatistic.id == centerline_id, BlockfaceStatistic.curb == curb_as_int
+                )
+                .one_or_none()
+            )
+            kwargs = {'centerline_id': centerline_id, 'curb': curb_as_int}
+            if prior_information is None:
+                blockface_statistic = BlockfaceStatistic(
+                    num_runs=1, rubbish_per_meter=inferred_pickup_density, **kwargs
+                )
+            else:
+                updated_rubbish_per_meter = (
+                    (prior_information.rubbish_per_meter * prior_information.num_runs + inferred_pickup_density) /
+                    prior_information.num_runs + 1
+                )
+                blockface_statistic = BlockfaceStatistic(
+                    num_runs=prior_information.num_runs + 1,
+                    rubbish_per_meter=updated_rubbish_per_meter,
+                    **kwargs
+                )
+            session.add(blockface_statistic)
 
     try:
         session.commit()

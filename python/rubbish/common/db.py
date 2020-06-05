@@ -7,7 +7,7 @@ import pathlib
 import os
 import sqlalchemy as sa
 from sqlalchemy.orm.session import sessionmaker
-from .orm import Zone, ZoneGeneration, Sector, Centerline, Pickup
+from .orm import (Zone, ZoneGeneration, Sector, Centerline, Pickup, BlockfaceStatistic)
 
 APPDIR = pathlib.Path(click.get_app_dir("rubbish", force_posix=True))
 
@@ -47,6 +47,7 @@ def reset_db():
     session = db_sessionmaker()()
     try:
         session.query(Pickup).delete()
+        session.query(BlockfaceStatistic).delete()
         session.query(Centerline).delete()
         session.query(Sector).delete()
         session.query(ZoneGeneration).delete()

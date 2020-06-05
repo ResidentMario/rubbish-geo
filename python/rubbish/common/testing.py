@@ -20,6 +20,10 @@ def reset_auto_increment():
         engine = db_sessionmaker()().bind
         engine.execute('ALTER SEQUENCE zones_id_seq RESTART WITH 1;')
         engine.execute('ALTER SEQUENCE zone_generations_id_seq RESTART WITH 1;')
+        engine.execute('ALTER SEQUENCE blockface_statistics_id_seq RESTART WITH 1;')
+        engine.execute('ALTER SEQUENCE pickups_id_seq RESTART WITH 1;')
+        engine.execute('ALTER SEQUENCE sectors_id_seq RESTART WITH 1;')
+        engine.execute('ALTER SEQUENCE centerlines_id_seq RESTART WITH 1;')
 
 def clean_db(f):
     def inner(*args, **kwargs):

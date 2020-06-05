@@ -69,10 +69,24 @@ def upgrade():
         sa.Column("linear_reference", sa.Float(precision=3)),
         sa.Column("curb", sa.Integer, nullable=False),  # side-of-street
     )
-
+    # Blockfaces are a psuedo-virtual table defined by the combination of {centerline,curb}.
+    # A centerline will typically have two blockfaces: one for the left side of the street and
+    # one for the right.
+    # Blockface statistics are the analytical unit of the service. Currently the only statistic
+    # we track is rubbish per meter, which is stored as a raw indexed value and exposed to the
+    # end user as both a number and a percentile.
+    op.create_table(
+        "blockface_statistics",
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("centerline_id", sa.Integer, sa.ForeignKey("centerlines.id"), nullable=False),
+        sa.Column("curb", sa.Integer, nullable=False),
+        sa.Column("rubbish_per_meter", sa.Float, nullable=False),
+        sa.Column("num_runs", sa.Integer, nullable=False)
+    )
 
 def downgrade():
     op.drop_table("pickups")
+    op.drop_table("blockface_statistics")
     op.drop_table("centerlines")
     op.drop_table("sectors")
     op.drop_table("zone_generations")
