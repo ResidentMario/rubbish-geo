@@ -76,6 +76,8 @@ def _munge_pickups(pickups):
         )
         if len(matches) == 0:
             raise ValueError("No centerlines in the database!")
+        # TODO: deal with pickups near the edges of centerlines that stray into matching with
+        # other streets that are not actually part of the run.
         match, match_geom_wkt, dist = (session
             .query(
                 Centerline,
@@ -100,7 +102,7 @@ def _munge_pickups(pickups):
         linear_reference = match_geom.project(orig_point, normalized=True)
         snapped_point = match_geom.interpolate(linear_reference, normalized=True)
 
-        # For now, no curb means left curb.
+        # For now, no curb means left curb. See the to-do item below this code block.
         if pickup['curb'] is None:
             pickup['curb'] = 'left'
 
@@ -145,6 +147,7 @@ def _munge_pickups(pickups):
                     linear_ref_max = linear_ref
 
             # skip if the run covered <50% of the length of the street
+            # TODO: only run this check for the first and last street in the run
             linear_ref_coverage = linear_ref_max - linear_ref_min
             if linear_ref_coverage < 0.5:
                 continue
@@ -152,12 +155,13 @@ def _munge_pickups(pickups):
             n_matching_pickups = len(matching_pickups)
             inferred_n_pickups = n_matching_pickups / linear_ref_coverage
             # TODO: store and use geographic distance instead of Cartesian distance.
-            # TODO: also scale against curb width, but need to get that info somehow however?
+            # TODO: also scale against curb width, somehow?
             inferred_pickup_density = inferred_n_pickups / centerline_geom.length
             prior_information = (session
                 .query(BlockfaceStatistic)
                 .filter(
-                    BlockfaceStatistic.id == centerline_id, BlockfaceStatistic.curb == curb_as_int
+                    BlockfaceStatistic.centerline_id == centerline_id,
+                    BlockfaceStatistic.curb == curb_as_int
                 )
                 .one_or_none()
             )
@@ -166,17 +170,19 @@ def _munge_pickups(pickups):
                 blockface_statistic = BlockfaceStatistic(
                     num_runs=1, rubbish_per_meter=inferred_pickup_density, **kwargs
                 )
+                session.add(blockface_statistic)
             else:
                 updated_rubbish_per_meter = (
-                    (prior_information.rubbish_per_meter * prior_information.num_runs + inferred_pickup_density) /
-                    prior_information.num_runs + 1
+                    (prior_information.rubbish_per_meter *
+                     prior_information.num_runs +
+                     inferred_pickup_density) /
+                    (prior_information.num_runs + 1)
                 )
                 blockface_statistic = BlockfaceStatistic(
                     num_runs=prior_information.num_runs + 1,
                     rubbish_per_meter=updated_rubbish_per_meter,
                     **kwargs
                 )
-            session.add(blockface_statistic)
 
     try:
         session.commit()

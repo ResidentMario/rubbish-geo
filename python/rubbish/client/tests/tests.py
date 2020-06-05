@@ -99,10 +99,34 @@ class TestWritePickups(unittest.TestCase):
         assert blockface_statistics[0].num_runs == 1
         assert blockface_statistics[1].num_runs == 1
 
-# Pickups with no missing values near a segment.
-# TODO
+    @clean_db
+    @alias_test_db
+    def testWritePickupsIncompleteRun(self):
+        update_zone("Grid City, California", "Grid City, California", centerlines=self.grid)
 
-# Pickups on intersections (exact match).
+        input = valid_pickups_from_geoms([Point(0.4, 0.0001), Point(0.6, 0.0001)], curb='left')
+        write_pickups(input)
+
+        blockface_statistics = self.session.query(BlockfaceStatistic).all()
+        assert len(blockface_statistics) == 0
+
+    @clean_db
+    @alias_test_db
+    def testWritePickupsWithPriorRun(self):
+        update_zone("Grid City, California", "Grid City, California", centerlines=self.grid)
+
+        input = valid_pickups_from_geoms([Point(0.1, 0.0001), Point(0.9, 0.0001)], curb='left')
+        write_pickups(input)
+        input = valid_pickups_from_geoms(
+            [Point(0.1, 0.0001), Point(0.2, 0.0001), Point(0.8, 0.0001), Point(0.9, 0.0001)],
+            curb='left'
+        )
+        write_pickups(input)
+
+        blockface_statistics = self.session.query(BlockfaceStatistic).all()
+        assert len(blockface_statistics) == 1
+
+# Pickups with no missing values near a segment.
 # TODO
 
 # Pickups on a single street missing cardinality.
