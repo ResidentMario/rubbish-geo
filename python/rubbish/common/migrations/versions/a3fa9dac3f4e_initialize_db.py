@@ -81,7 +81,7 @@ def upgrade():
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("centerline_id", sa.Integer, sa.ForeignKey("centerlines.id"), nullable=False),
         sa.Column("curb", sa.Integer, nullable=False),
-        sa.Column("rubbish_per_meter", sa.Float, nullable=False),
+        sa.Column("rubbish_per_meter", sa.Float, nullable=False, index=True),
         sa.Column("num_runs", sa.Integer, nullable=False)
     )
 
