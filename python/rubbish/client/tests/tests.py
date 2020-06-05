@@ -13,12 +13,12 @@ from unittest.mock import patch
 import pytest
 
 import rubbish
-from rubbish.common.db import reset_db, db_sessionmaker
+from rubbish.common.db_ops import reset_db, db_sessionmaker
 from rubbish.common.orm import Pickup, BlockfaceStatistic
-from rubbish.common.testing import get_db, clean_db, alias_test_db
+from rubbish.common.test_utils import get_db, clean_db, alias_test_db
 from rubbish.common.consts import RUBBISH_TYPES
-from rubbish.client.io import write_pickups
-from rubbish.admin.zones import update_zone
+from rubbish.client.ops import write_pickups
+from rubbish.admin.ops import update_zone
 
 def valid_pickups_from_geoms(geoms, curb=None):
     return [{
@@ -29,22 +29,24 @@ def valid_pickups_from_geoms(geoms, curb=None):
         'geometry': str(geom)  # as WKT
     } for i, geom in enumerate(geoms)]
 
-# psql -U alekseybilogur -h localhost postgres
 class TestWritePickups(unittest.TestCase):
     def setUp(self):
-        with patch('rubbish.common.db.get_db', new=get_db):
+        with patch('rubbish.common.db_ops.get_db', new=get_db):
             self.session = db_sessionmaker()()
-        self.grid = gpd.read_file("../../common/fixtures/grid.geojson")
+        self.grid = gpd.read_file("fixtures/grid.geojson")
+
+    @clean_db
+    @alias_test_db
+    def testWriteZeroPickups(self):
+        update_zone("Grid City, California", "Grid City, California", centerlines=self.grid)
+        write_pickups(gpd.GeoDataFrame({}))
+        pickups = self.session.query(Pickup).all()
+        assert len(pickups) == 0
 
     @clean_db
     @alias_test_db
     def testWritePickupsOnSegment(self):
         update_zone("Grid City, California", "Grid City, California", centerlines=self.grid)
-
-        # Zero pickups.
-        write_pickups(gpd.GeoDataFrame({}))
-        pickups = self.session.query(Pickup).all()
-        assert len(pickups) == 0
 
         # Pickups with no missing values on a segment.
         input = valid_pickups_from_geoms([Point(0.1, 0), Point(0.9, 0)], curb='left')
@@ -58,7 +60,7 @@ class TestWritePickups(unittest.TestCase):
         assert len(blockface_statistics) == 1
         assert blockface_statistics[0].curb == 0
         assert blockface_statistics[0].num_runs == 1
-    
+
     @clean_db
     @alias_test_db
     def testWritePickupsNearSegment(self):

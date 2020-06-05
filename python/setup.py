@@ -10,6 +10,6 @@ setup(
     extras_require={'develop': ['pylint', 'pytest']},
     entry_points='''
         [console_scripts]
-        rubbish-admin=rubbish.admin.rubbish:cli
+        rubbish-admin=rubbish.admin.cli:cli
     ''',
 )

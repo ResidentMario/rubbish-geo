@@ -5,7 +5,7 @@ Admin methods for interacting with zones.
 from datetime import datetime
 import osmnx as ox
 import geopandas as gpd
-from rubbish.common.db import db_sessionmaker, get_db
+from rubbish.common.db_ops import db_sessionmaker, get_db
 from rubbish.common.orm import Zone, ZoneGeneration, Centerline
 import sqlalchemy as sa
 

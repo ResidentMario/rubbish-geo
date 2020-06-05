@@ -6,8 +6,8 @@ import click
 import os
 import subprocess
 
-from rubbish.common.db import set_db as _set_db, reset_db as _reset_db, get_db as _get_db
-from .zones import update_zone as _update_zone
+from rubbish.common.db_ops import set_db as _set_db, reset_db as _reset_db, get_db as _get_db
+from .ops import update_zone as _update_zone
 
 @click.group()
 def cli():
@@ -52,11 +52,11 @@ def reset_db():
 
 @click.command(name="update-zone", short_help="Write a new zone generation in and reticulates.")
 @click.argument("osmnx_name")
-@click.option("-n", "--name", help="Optional name, otherwise copies osmnx_name.")
+@click.option("-n", "--name", help="Optional name, otherwise copies osmnx_name.", default=None)
 def update_zone(osmnx_name, name):
+    if name is None:
+        name = osmnx_name
     _update_zone(osmnx_name, name)
-
-# TODO: rollback-zone
 
 cli.add_command(connect)
 cli.add_command(get_db)

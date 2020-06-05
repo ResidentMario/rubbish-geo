@@ -10,22 +10,21 @@ from unittest.mock import patch
 import pytest
 
 import rubbish
-from rubbish.common.db import reset_db, db_sessionmaker
+from rubbish.common.db_ops import reset_db, db_sessionmaker
 from rubbish.common.orm import Zone, ZoneGeneration
-from rubbish.common.testing import get_db, reset_auto_increment, clean_db, alias_test_db
-from rubbish.admin.zones import update_zone
+from rubbish.common.test_utils import get_db, clean_db, alias_test_db
+from rubbish.admin.ops import update_zone
 
-# psql -U alekseybilogur -h localhost postgres
 class TestUpdateZone(unittest.TestCase):
     def setUp(self):
-        with patch('rubbish.common.db.get_db', new=get_db):
+        with patch('rubbish.common.db_ops.get_db', new=get_db):
             self.session = db_sessionmaker()()
-        self.centerlines = gpd.read_file("../../common/fixtures/grid.geojson", driver='GeoJSON')
+        self.grid = gpd.read_file("fixtures/grid.geojson", driver='GeoJSON')
 
     @clean_db
     @alias_test_db
     def testNewZoneWrite(self):
-        update_zone("Grid City, California", "Foo, Bar", centerlines=self.centerlines)
+        update_zone("Grid City, California", "Foo, Bar", centerlines=self.grid)
 
         zones = self.session.query(Zone).all()
         assert len(zones) == 1
@@ -37,15 +36,15 @@ class TestUpdateZone(unittest.TestCase):
         assert len(zone_generations) == 1
         assert zone_generations[0].id == 1
         assert zone_generations[0].generation == 0
+        # NOTE(aleksey): using timedelta of -1hr in case of clock skew
         assert zone_generations[0].final_timestamp > datetime.now() - timedelta(hours=1)
         assert zone_generations[0].zone_id == zones[0].id
 
     @clean_db
     @alias_test_db
     def testExistingZoneIdempotentWrite(self):
-        # idempotent in the sense that none of the centerlines have actually changed
-        update_zone("Grid City, California", "Foo, Bar", centerlines=self.centerlines)
-        update_zone("Grid City, California", "Foo, Bar", centerlines=self.centerlines)
+        update_zone("Grid City, California", "Foo, Bar", centerlines=self.grid)
+        update_zone("Grid City, California", "Foo, Bar", centerlines=self.grid)
 
         zones = self.session.query(Zone).all()
         assert len(zones) == 1

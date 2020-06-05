@@ -8,7 +8,7 @@ import geoalchemy2
 import warnings
 from datetime import datetime, timedelta
 
-from rubbish.common.db import db_sessionmaker
+from rubbish.common.db_ops import db_sessionmaker
 from rubbish.common.orm import Pickup, Centerline, BlockfaceStatistic
 from rubbish.common.consts import RUBBISH_TYPES, RUBBISH_TYPE_MAP
 
