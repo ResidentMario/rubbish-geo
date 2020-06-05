@@ -11,7 +11,7 @@ import pytest
 
 import rubbish
 from rubbish.common.db_ops import reset_db, db_sessionmaker
-from rubbish.common.orm import Zone, ZoneGeneration
+from rubbish.common.orm import Zone, ZoneGeneration, Centerline
 from rubbish.common.test_utils import get_db, clean_db, alias_test_db
 from rubbish.admin.ops import update_zone
 
@@ -39,6 +39,10 @@ class TestUpdateZone(unittest.TestCase):
         # NOTE(aleksey): using timedelta of -1hr in case of clock skew
         assert zone_generations[0].final_timestamp > datetime.now() - timedelta(hours=1)
         assert zone_generations[0].zone_id == zones[0].id
+
+        centerlines = self.session.query(Centerline).all()
+        assert len(centerlines) == 12
+        assert all(pytest.approx(100000, 20000) == l.length_in_meters for l in centerlines)
 
     @clean_db
     @alias_test_db
