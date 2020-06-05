@@ -44,14 +44,16 @@ class Centerline(Base):
     first_zone_generation = sa.Column("first_zone_generation", sa.Integer)
     last_zone_generation = sa.Column("last_zone_generation", sa.Integer, nullable=True)
     zone_id = sa.Column("zone_id", sa.Integer, sa.ForeignKey("zones.id"), nullable=False)
+    osmid = sa.Column("osmid", sa.Integer, nullable=False)
+    name = sa.Column("name", sa.String, nullable=False)
     pickups = relationship("Pickup", back_populates="centerline")
 
     def __repr__(self):
         return (
-            f"""<Centerline id={self.id} geometry={self.geometry} """
+            f"""<Centerline name={self.name} id={self.id} geometry={self.geometry} """
             f"""first_zone_generation={self.first_zone_generation} """
             f"""last_zone_generation={self.last_zone_generation} """
-            f"""zone_id={self.zone_id}>"""
+            f"""zone_id={self.zone_id}> osmnid={self.osmid}"""
         )
 
 class Pickup(Base):

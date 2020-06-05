@@ -25,7 +25,7 @@ def upgrade():
         "zones",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("name", sa.String(64), nullable=False),
-        sa.Column("osmnx_name", sa.String(64), nullable=False)  # used by the importer
+        sa.Column("osmnx_name", sa.String(64), nullable=False)
     )
     # Zone generations allow for changes in the street grid over time.
     op.create_table(
@@ -49,9 +49,11 @@ def upgrade():
         "centerlines",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("geometry", Geometry("LINESTRING", srid=4326)),
-        sa.Column("first_zone_generation", sa.Integer),
+        sa.Column("first_zone_generation", sa.Integer, nullable=False),
         sa.Column("last_zone_generation", sa.Integer, nullable=True),
-        sa.Column("zone_id", sa.Integer, sa.ForeignKey("zones.id"), nullable=False)
+        sa.Column("zone_id", sa.Integer, sa.ForeignKey("zones.id"), nullable=False),
+        sa.Column("osmid", sa.Integer, nullable=False),
+        sa.Column("name", sa.String, nullable=False)
     )
     # Pickups are the event type of interest.
     # Note that most non-geometric properties are in Firebase.

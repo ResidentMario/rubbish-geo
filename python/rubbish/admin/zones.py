@@ -70,9 +70,24 @@ def update_zone(osmnx_name, name, centerlines=None):
     if centerlines is None:
         G = ox.graph_from_place(osmnx_name, network_type="drive")
         _, edges = ox.graph_to_gdfs(G)
+
+        # Centerline names entries may be NaN, a str name, or a list[str] of names. AFAIK there
+        # isn't any interesting information in the ordering of names, so we'll use first-wins
+        # rules for list[str]. For NaN names, we'll insert an "Unknown" string.
+        # TODO: come up with better unnamed street handling behavior.
+        #
+        # Centerline osmid values cannot be NaN, but can map to a list. It's unclear why this
+        # is the case.
+        # TODO: investigate why some osmid values are in list format.
+        edges = edges.assign(
+            name=edges.name.map(
+                lambda n: n if isinstance(n, str) else n[0] if isinstance(n, list) else "Unknown"
+            ),
+            osmid=edges.osmid.map(lambda v: v if isinstance(v, int) else v[0])
+        )
         centerlines = gpd.GeoDataFrame(
             {"first_zone_generation": zone_generation.id, "last_zone_generation": None,
-            "zone_id": zone.id},
+             "zone_id": zone.id, "osmid": edges.osmid, "name": edges.name},
             index=range(len(edges)),
             geometry=edges.geometry
         )

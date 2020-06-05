@@ -1,0 +1,18 @@
+{
+"type": "FeatureCollection",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "osmid": 0, "name": "0_0_0_1 Street", "zone_id": 1, "first_zone_generation": 1, "last_zone_generation": null }, "geometry": { "type": "LineString", "coordinates": [ [ 0.0, 0.0 ], [ 0.0, 1.0 ] ] } },
+{ "type": "Feature", "properties": { "osmid": 1, "name": "0_1_0_2 Street", "zone_id": 1, "first_zone_generation": 1, "last_zone_generation": null }, "geometry": { "type": "LineString", "coordinates": [ [ 0.0, 1.0 ], [ 0.0, 2.0 ] ] } },
+{ "type": "Feature", "properties": { "osmid": 2, "name": "0_0_1_0 Street", "zone_id": 1, "first_zone_generation": 1, "last_zone_generation": null }, "geometry": { "type": "LineString", "coordinates": [ [ 0.0, 0.0 ], [ 1.0, 0.0 ] ] } },
+{ "type": "Feature", "properties": { "osmid": 3, "name": "1_0_2_0 Street", "zone_id": 1, "first_zone_generation": 1, "last_zone_generation": null }, "geometry": { "type": "LineString", "coordinates": [ [ 1.0, 0.0 ], [ 2.0, 0.0 ] ] } },
+{ "type": "Feature", "properties": { "osmid": 4, "name": "2_0_2_1 Street", "zone_id": 1, "first_zone_generation": 1, "last_zone_generation": null }, "geometry": { "type": "LineString", "coordinates": [ [ 2.0, 0.0 ], [ 2.0, 1.0 ] ] } },
+{ "type": "Feature", "properties": { "osmid": 5, "name": "2_1_2_2 Street", "zone_id": 1, "first_zone_generation": 1, "last_zone_generation": null }, "geometry": { "type": "LineString", "coordinates": [ [ 2.0, 1.0 ], [ 2.0, 2.0 ] ] } },
+{ "type": "Feature", "properties": { "osmid": 6, "name": "2_2_1_2 Street", "zone_id": 1, "first_zone_generation": 1, "last_zone_generation": null }, "geometry": { "type": "LineString", "coordinates": [ [ 2.0, 2.0 ], [ 1.0, 2.0 ] ] } },
+{ "type": "Feature", "properties": { "osmid": 7, "name": "1_2_0_2 Street", "zone_id": 1, "first_zone_generation": 1, "last_zone_generation": null }, "geometry": { "type": "LineString", "coordinates": [ [ 1.0, 2.0 ], [ 0.0, 2.0 ] ] } },
+{ "type": "Feature", "properties": { "osmid": 8, "name": "1_0_1_1 Street", "zone_id": 1, "first_zone_generation": 1, "last_zone_generation": null }, "geometry": { "type": "LineString", "coordinates": [ [ 1.0, 0.0 ], [ 1.0, 1.0 ] ] } },
+{ "type": "Feature", "properties": { "osmid": 9, "name": "0_1_1_1 Street", "zone_id": 1, "first_zone_generation": 1, "last_zone_generation": null }, "geometry": { "type": "LineString", "coordinates": [ [ 0.0, 1.0 ], [ 1.0, 1.0 ] ] } },
+{ "type": "Feature", "properties": { "osmid": 10, "name": "1_2_1_1 Street", "zone_id": 1, "first_zone_generation": 1, "last_zone_generation": null }, "geometry": { "type": "LineString", "coordinates": [ [ 1.0, 2.0 ], [ 1.0, 1.0 ] ] } },
+{ "type": "Feature", "properties": { "osmid": 11, "name": "2_1_1_1 Street", "zone_id": 1, "first_zone_generation": 1, "last_zone_generation": null }, "geometry": { "type": "LineString", "coordinates": [ [ 2.0, 1.0 ], [ 1.0, 1.0 ] ] } }
+]
+}
