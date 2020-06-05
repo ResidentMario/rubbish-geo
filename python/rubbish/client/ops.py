@@ -156,7 +156,7 @@ def _munge_pickups(pickups):
             inferred_n_pickups = n_matching_pickups / linear_ref_coverage
             # TODO: store and use geographic distance instead of Cartesian distance.
             # TODO: also scale against curb width, somehow?
-            inferred_pickup_density = inferred_n_pickups / centerline_geom.length
+            inferred_pickup_density = inferred_n_pickups / centerline.length_in_meters
             prior_information = (session
                 .query(BlockfaceStatistic)
                 .filter(

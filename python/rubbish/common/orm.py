@@ -46,6 +46,7 @@ class Centerline(Base):
     zone_id = sa.Column("zone_id", sa.Integer, sa.ForeignKey("zones.id"), nullable=False)
     osmid = sa.Column("osmid", sa.Integer, nullable=False)
     name = sa.Column("name", sa.String, nullable=False)
+    length_in_meters = sa.Column("length_in_meters", sa.Float, nullable=False)
     pickups = relationship("Pickup", back_populates="centerline")
     blockface_statistics = relationship("BlockfaceStatistic", back_populates="centerline")
 
@@ -54,7 +55,7 @@ class Centerline(Base):
             f"""<Centerline name={self.name} id={self.id} geometry={self.geometry} """
             f"""first_zone_generation={self.first_zone_generation} """
             f"""last_zone_generation={self.last_zone_generation} """
-            f"""zone_id={self.zone_id}> osmnid={self.osmid}"""
+            f"""length={self.length} zone_id={self.zone_id} osmnid={self.osmid}>"""
         )
 
 class Pickup(Base):

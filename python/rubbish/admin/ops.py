@@ -8,6 +8,14 @@ import geopandas as gpd
 from rubbish.common.db_ops import db_sessionmaker, get_db
 from rubbish.common.orm import Zone, ZoneGeneration, Centerline
 import sqlalchemy as sa
+from geopy.distance import distance
+
+def _calculate_linestring_length(linestring):
+    length = 0
+    for idx_b in range(1, len(linestring.coords)):
+        idx_a = idx_b - 1
+        length += distance(linestring.coords[idx_a], linestring.coords[idx_b]).meters
+    return length
 
 def update_zone(osmnx_name, name, centerlines=None):
     """
@@ -92,6 +100,11 @@ def update_zone(osmnx_name, name, centerlines=None):
             geometry=edges.geometry
         )
         centerlines.crs = "epsg:4326"
+        centerlines["length_in_meters"] = centerlines.geometry.map(_calculate_linestring_length)
+    
+    # TODO: include length_in_meters field in fixtures
+    else:
+        centerlines["length_in_meters"] = centerlines.geometry.map(_calculate_linestring_length)        
     conn = sa.create_engine(get_db())
 
     # Cap the previous centerline generations (see previous comment).

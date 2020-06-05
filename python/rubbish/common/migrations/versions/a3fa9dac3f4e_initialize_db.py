@@ -53,7 +53,8 @@ def upgrade():
         sa.Column("last_zone_generation", sa.Integer, nullable=True),
         sa.Column("zone_id", sa.Integer, sa.ForeignKey("zones.id"), nullable=False),
         sa.Column("osmid", sa.Integer, nullable=False),
-        sa.Column("name", sa.String, nullable=False)
+        sa.Column("name", sa.String, nullable=False),
+        sa.Column("length_in_meters", sa.Float, nullable=False)
     )
     # Pickups are the event type of interest.
     # Note that most non-geometric properties are in Firebase.
