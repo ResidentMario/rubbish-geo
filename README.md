@@ -1,17 +1,15 @@
 # rubbish-api-service
 
-This repository contains the code comprising Rubbish's PostGIS backend.
+`rubbish-api-service` contains all of the code used for interacting with the Rubbish analytics service.
 
-## admin
+## overview
 
-The admin CLI (`python/admin`) is used for performing administrative tasks on the database. Use `pip install python/admin` to get it. You will also need a version of `geopandas` off of master (one with [GH#1248](https://github.com/geopandas/geopandas/pull/1248) merged), which you can get with e.g.:
+The Rubbish analytics service backend is a Postgres database with the PostGIS extension enabled. Rubbish pickups are backfilled (from the Firestore application database) at the end of every rubbish run. Client applications can in turn query the database (via the Rubbish analytics API) to retrieve useful geospatial information from the service.
 
-```bash
-pip install git+https://github.com/geopandas/geopandas.git@3cba9
-```
+This repo contains the following service components:
 
-Once you have it run `rubbish-admin --help` to see the available options.
+* `python/rubbish/admin`&mdash;a `rubbish-admin` CLI usable for common database operations: configuring the database connection, connecting to the database directly (by shelling out to `psql`), reseting the database, and writing street grids (e.g. `San Francisco`) into the database.
+* `python/rubbish/client`&mdash;a Python module (`import rubbish`) containing library functions for sending pickup data and exfiltrating pickup analytics.
+* `python/functions`&mdash;cloud functions definitions used for Firebase to Postgres and client to Postgres communication.
 
-## client
-
-The client (`python/client`) is used by the API service to interact with the database.
+See the corresponding folders for setup instructions.
