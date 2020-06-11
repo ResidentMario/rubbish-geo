@@ -7,7 +7,10 @@ import os
 import subprocess
 
 from rubbish.common.db_ops import set_db as _set_db, reset_db as _reset_db, get_db as _get_db
-from .ops import update_zone as _update_zone
+from .ops import (
+    update_zone as _update_zone, insert_sector as _insert_sector, delete_sector as _delete_sector,
+    show_sectors as _show_sectors, show_zones as _show_zones
+)
 
 @click.group()
 def cli():
@@ -58,8 +61,30 @@ def update_zone(osmnx_name, name):
         name = osmnx_name
     _update_zone(osmnx_name, name)
 
+@click.command(name="show-zones", short_help="Pretty-prints zones in the database.")
+def show_zones():
+    _show_zones()
+
+@click.command(name="insert-sector", short_help="Inserts a new sector into the database.")
+@click.argument("sector_name")
+@click.argument("filepath")
+def insert_sector(sector_name, filepath):
+    _insert_sector(sector_name, filepath)
+
+@click.command(name="delete-sector", short_help="Deletes a sector from the database.")
+@click.argument("sector_name")
+def delete_sector(sector_name):
+    _delete_sector(sector_name)
+
+@click.command(name="show-sectors", short_help="Pretty-prints sectors in the database.")
+def show_sectors():
+    show_sectors()
+
 cli.add_command(connect)
 cli.add_command(get_db)
 cli.add_command(set_db)
 cli.add_command(reset_db)
 cli.add_command(update_zone)
+cli.add_command(show_zones)
+cli.add_command(insert_sector)
+cli.add_command(delete_sector)
