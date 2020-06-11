@@ -66,15 +66,6 @@ def update_zone(osmnx_name, name, centerlines=None):
     session.flush()
 
     # insert centerlines
-    # TODO: intergenerational reticulation.
-    #
-    # The current behavior is that every time a zone is overwritten, every centerline
-    # in the previous zone generation is capped at that generation, and the complete
-    # new street grid of the current generation is written into the DB.
-    #
-    # The long-term correct behavior would be to merge the old and new street grid:
-    # overwrite only where there are changes, and perform smart reticulation of points
-    # when doing so is useful.
     if centerlines is None:
         G = ox.graph_from_place(osmnx_name, network_type="drive")
         _, edges = ox.graph_to_gdfs(G)
@@ -82,11 +73,9 @@ def update_zone(osmnx_name, name, centerlines=None):
         # Centerline names entries may be NaN, a str name, or a list[str] of names. AFAIK there
         # isn't any interesting information in the ordering of names, so we'll use first-wins
         # rules for list[str]. For NaN names, we'll insert an "Unknown" string.
-        # TODO: come up with better unnamed street handling behavior.
         #
         # Centerline osmid values cannot be NaN, but can map to a list. It's unclear why this
         # is the case.
-        # TODO: investigate why some osmid values are in list format.
         edges = edges.assign(
             name=edges.name.map(
                 lambda n: n if isinstance(n, str) else n[0] if isinstance(n, list) else "Unknown"
@@ -102,7 +91,6 @@ def update_zone(osmnx_name, name, centerlines=None):
         centerlines.crs = "epsg:4326"
         centerlines["length_in_meters"] = centerlines.geometry.map(_calculate_linestring_length)
     
-    # TODO: include length_in_meters field in fixtures
     else:
         centerlines["length_in_meters"] = centerlines.geometry.map(_calculate_linestring_length)        
     conn = sa.create_engine(get_db())

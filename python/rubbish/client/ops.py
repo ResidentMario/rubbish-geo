@@ -61,8 +61,6 @@ def _munge_pickups(pickups):
             raise ValueError(f"Found pickup with type not in valid types {RUBBISH_TYPES!r}.")
 
     # Snap points to centerlines. Cf. https://postgis.net/workshops/postgis-intro/knn.html
-    # TODO: it may be possible to significantly speed this process up by precomputing areas using
-    # morphological tesselation.
     session = db_sessionmaker()()
     centerline_objs, pickup_objs = dict(), dict()
     for pickup in pickups:
@@ -76,8 +74,6 @@ def _munge_pickups(pickups):
         )
         if len(matches) == 0:
             raise ValueError("No centerlines in the database!")
-        # TODO: deal with pickups near the edges of centerlines that stray into matching with
-        # other streets that are not actually part of the run.
         match, match_geom_wkt, dist = (session
             .query(
                 Centerline,
@@ -126,8 +122,6 @@ def _munge_pickups(pickups):
             pickup_objs[match.id][pickup['curb']].append(pickup_obj)
         session.add(pickup_obj)
 
-    # TODO: curb correction logic
-
     # percentile calculation logic
     for centerline_id in centerline_objs:
         for curb in ['left', 'right']:
@@ -147,15 +141,12 @@ def _munge_pickups(pickups):
                     linear_ref_max = linear_ref
 
             # skip if the run covered <50% of the length of the street
-            # TODO: only run this check for the first and last street in the run
             linear_ref_coverage = linear_ref_max - linear_ref_min
             if linear_ref_coverage < 0.5:
                 continue
 
             n_matching_pickups = len(matching_pickups)
             inferred_n_pickups = n_matching_pickups / linear_ref_coverage
-            # TODO: store and use geographic distance instead of Cartesian distance.
-            # TODO: also scale against curb width, somehow?
             inferred_pickup_density = inferred_n_pickups / centerline.length_in_meters
             prior_information = (session
                 .query(BlockfaceStatistic)
@@ -209,5 +200,4 @@ def write_pickups(pickups):
     This list is to correspond with a single rubbish run, with items sequenced in the order in
     which the pickups were made.
     """
-    # TODO: expand curb definition to include pedestrian islands.
     return _munge_pickups(pickups)

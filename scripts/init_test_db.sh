@@ -1,18 +1,6 @@
 #!/bin/bash
 set -e
 
-# prerequisite to running this script is having postgres and postgis installed locally
-# on macOS this can be done via:
-# > brew install postgres; brew install postgis
-# TODO: move these instructions to a README
-# TODO: why is /dev/null redirection not working as expected?
-
-# HACK(aleksey): running this script while inside of a conda environment causes the PostGIS loading
-# process to fail because PostGIS looks for its init files in the wrong place. Very weird
-# interaction. However, we still need to have alembic installed to be able to perform the
-# migration. And we can't init into a conda environment either because running a script in a shell
-# is non-interactive. So for now you just have to run the alembic upgrade head line manually.
-
 # initialize Postgres
 # PGDATA envvar is required by pg_ctl status
 RUBBISH_PGSTATUS=$(pg_ctl status -D /usr/local/var/postgres) || true
@@ -43,7 +31,11 @@ cat $RUBBISH/python/rubbish/common/alembic.ini |
     sed -E "s|sqlalchemy.url = [a-zA-Z:/_0-9@\.-]*|sqlalchemy.url = $CONNSTR|" > $RUBBISH/python/rubbish/common/test_alembic.ini
 cd $RUBBISH/scripts/
 
-# NOTE(aleksey): cannot run alembic op from here due to weird interactions with conda.
+# NOTE(aleksey): running this script while inside of a conda environment causes the PostGIS loading
+# process to fail because PostGIS looks for its init files in the wrong place. Very weird
+# interaction. However, we still need to have alembic installed to be able to perform the
+# migration. And we can't init into a conda environment either because running a script in a shell
+# is non-interactive. So for now you just have to run the alembic upgrade head line manually.
 # cd $RUBBISH/python/rubbish/common && alembic -c test_alembic.ini upgrade head ||
 #     echo "Failed to run migration, are you sure Alembic is installed?"
 echo "Almost done! To finish setup navigate to common and run alembic -c test_alembic.ini upgrade head."
