@@ -24,6 +24,7 @@ install:
   - conda info -a
 
   - conda create -c conda-forge -q -n test-environment python=$TRAVIS_PYTHON_VERSION geopandas geopy osmnx
+  - chmod +x wait_for_postgres.sh && ./wait_for_postgres.sh
 script:
   - pytest python/admin/tests/tests.py
   - pytest python/client/tests/tests.py
