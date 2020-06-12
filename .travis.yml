@@ -13,6 +13,7 @@ install:
 
   - git clone https://github.com/ResidentMario/rubbish-api-service.git
   - conda create -c conda-forge -q -n test-environment python=$TRAVIS_PYTHON_VERSION geopandas geopy osmnx
+  - conda activate test-environment
   - pushd rubbish-api-service/python && pip install .[develop] && popd
 
 script:
