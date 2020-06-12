@@ -18,7 +18,7 @@ install:
   - pushd rubbish-api-service/python && pip install .[develop] && popd
 
 script:
-  - PGHOST=localhost PGPORT=5432 PGDATA=/var/lib/pgsql/data pg_ctl start
+  - PGHOST=localhost PGPORT=5432 PGDATA=/var/lib/pgsql/data mkdir -p /var/lib/pgsql/data && pg_ctl start
   - CONNSTR=postgresql://$(whoami)@localhost:5432/postgres &&
     psql $CONNSTR -c "CREATE DATABASE rubbish;" &&
     psql $CONNSTR -c "CREATE EXTENSION postgis"
