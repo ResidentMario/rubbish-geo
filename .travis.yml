@@ -1,0 +1,36 @@
+dist: xenial
+language: python
+sudo: true
+python:
+  - "3.7"
+install:
+  - sudo apt update
+  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - source "$HOME/miniconda/etc/profile.d/conda.sh"
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda info -a
+
+  - git clone https://github.com/ResidentMario/rubbish-api-service.git
+  - conda create -c conda-forge -q -n test-environment python=$TRAVIS_PYTHON_VERSION geopandas geopy osmnx
+
+script:
+  - export PGHOST=localhost PGPORT=5432 PGDATA=$HOME/pgsql/data CONNSTR=postgresql://$(whoami)@localhost:5432/postgres
+  - mkdir -p $PGDATA
+  - pg_ctl initdb && pg_ctl start
+  - psql $CONNSTR -c "CREATE DATABASE rubbish;" &&
+    psql $CONNSTR -c "CREATE EXTENSION postgis"
+  - conda activate test-environment
+  - pushd rubbish-api-service/python && pip install .[develop] && popd
+  - rubbish-admin set-db postgresql://$(whoami)@localhost:5432/rubbish
+  - cat rubbish-api-service/python/rubbish/common/alembic.ini |
+    sed -E "s|sqlalchemy.url = [a-zA-Z:/_0-9@\.-]*|sqlalchemy.url = $CONNSTR|" >
+    rubbish-api-service/python/rubbish/common/test_alembic.ini
+  - pushd rubbish-api-service/python/rubbish/common && alembic -c test_alembic.ini upgrade head && popd
+  - pytest rubbish-api-service/python/admin/tests/tests.py
+  - pytest rubbish-api-service/python/client/tests/tests.py
+# This is an older version of postgres because newer versions seem to not be 100% supported.
+# Cf. https://github.com/travis-ci/travis-ci/issues/8537
+before_script:
+  - sudo apt-get install postgresql-9.6-postgis-2.3 postgis -y -q

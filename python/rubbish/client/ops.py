@@ -201,3 +201,5 @@ def write_pickups(pickups):
     which the pickups were made.
     """
     return _munge_pickups(pickups)
+
+__all__ = ['write_pickups']
