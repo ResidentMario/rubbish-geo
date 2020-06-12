@@ -13,6 +13,7 @@ install:
       -e POSTGRES_USER=rubbish-test-user
       -e POSTGRES_PASSWORD=polkstreet
       -p 5432:5432 rubbish-db:latest
+  - chmod +x wait_for_postgres.sh && ./wait_for_postgres.sh
   - docker exec -it rubbish-db-container alembic -c test_alembic.ini upgrade head
 
   - sudo apt update
@@ -24,7 +25,6 @@ install:
   - conda info -a
 
   - conda create -c conda-forge -q -n test-environment python=$TRAVIS_PYTHON_VERSION geopandas geopy osmnx
-  - chmod +x wait_for_postgres.sh && ./wait_for_postgres.sh
 script:
   - pytest python/admin/tests/tests.py
   - pytest python/client/tests/tests.py
