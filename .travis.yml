@@ -15,7 +15,7 @@ install:
   - conda create -c -q -n test-environment python=$TRAVIS_PYTHON_VERSION geopandas geopy
   - pushd rubbish-api-service/python && pip install .[develop] && popd
 
-  script:
+script:
   - CONNSTR=postgresql://$(whoami)@localhost/postgres && psql $CONNSTR -c "CREATE DATABASE rubbish;"
   - rubbish-admin set-db postgresql://$(whoami)@localhost/rubbish
   - pg_ctl -D /usr/local/var/postgres start
