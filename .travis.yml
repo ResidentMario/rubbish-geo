@@ -14,7 +14,6 @@ install:
 
   - git clone https://github.com/ResidentMario/rubbish-api-service.git
   - conda create -c conda-forge -q -n test-environment python=$TRAVIS_PYTHON_VERSION geopandas geopy osmnx
-  - pushd rubbish-api-service/python && pip install .[develop] && popd
 
 script:
   - export PGHOST=localhost PGPORT=5432 PGDATA=$HOME/pgsql/data
@@ -24,6 +23,7 @@ script:
     psql $CONNSTR -c "CREATE DATABASE rubbish;" &&
     psql $CONNSTR -c "CREATE EXTENSION postgis"
   - conda activate test-environment
+  - pushd rubbish-api-service/python && pip install .[develop] && popd
   - rubbish-admin set-db postgresql://$(whoami)@localhost:5432/rubbish
   - pytest rubbish-api-service/python/admin/tests/tests.py
   - pytest rubbish-api-service/python/client/tests/tests.py
