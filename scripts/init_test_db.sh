@@ -11,7 +11,6 @@ else
     pg_ctl -D /usr/local/var/postgres start ||
     (echo "Could not start Postgres, are you sure it's installed?" && exit 1)
 fi
-echo "FOO"
 
 # initialize Rubbish database
 CONNSTR=postgresql://$(whoami)@localhost/postgres
