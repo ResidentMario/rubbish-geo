@@ -18,11 +18,11 @@ install:
   - pushd rubbish-api-service/python && pip install .[develop] && popd
 
 script:
-  - CONNSTR=postgresql://$(whoami)@localhost/postgres &&
+  - PGHOST=localhost PGPORT=5432 PGDATA=/var/lib/pgsql/data pg_ctl start
+  - CONNSTR=postgresql://$(whoami)@localhost:5432/postgres &&
     psql $CONNSTR -c "CREATE DATABASE rubbish;" &&
     psql $CONNSTR -c "CREATE EXTENSION postgis"
-  - rubbish-admin set-db postgresql://$(whoami)@localhost/rubbish
-  - pg_ctl -D /usr/local/var/postgres start
+  - rubbish-admin set-db postgresql://$(whoami)@localhost:5432/rubbish
   - pytest rubbish-api-service/python/admin/tests/tests.py
   - pytest rubbish-api-service/python/client/tests/tests.py
 # This is an older version of postgres because newer versions seem to not be 100% supported.
