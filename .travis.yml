@@ -17,7 +17,9 @@ install:
   - pushd rubbish-api-service/python && pip install .[develop] && popd
 
 script:
-  - CONNSTR=postgresql://$(whoami)@localhost/postgres && psql $CONNSTR -c "CREATE DATABASE rubbish;"
+  - CONNSTR=postgresql://$(whoami)@localhost/postgres &&
+    psql $CONNSTR -c "CREATE DATABASE rubbish;" &&
+    psql $CONNSTR -c "CREATE EXTENSION postgis"
   - rubbish-admin set-db postgresql://$(whoami)@localhost/rubbish
   - pg_ctl -D /usr/local/var/postgres start
   - pytest rubbish-api-service/python/admin/tests/tests.py
@@ -29,5 +31,3 @@ addons:
   apt:
     packages:
     - postgresql-9.6-postgis-2.3
-before_script:
-  - psql -U postgres -c "create extension postgis"
