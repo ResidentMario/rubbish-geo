@@ -22,9 +22,28 @@ Once you have it run `rubbish-admin --help` to see the available options. To imp
 
 ## testing
 
-To test you will need to have Postgres and PostGIS running locally, and have some other bits correctly sell as well. Unfortunately this is currently much more complicated than it needs to be because of environment issues. But see `scripts/init_test_db.sh` for some hints.
+You will need to have Docker installed and running locally. Then, run the following from repo root to initialize a local DB instance:
 
-Assuming you have everything set up correctly you can then:
+```bash
+$ docker build --file Dockerfile.database --tag rubbish-db .
+$ docker run -d \
+    --name rubbish-db-container \
+    -e POSTGRES_DB=rubbish \
+    -e POSTGRES_USER=rubbish-test-user \
+    -e POSTGRES_PASSWORD=polkstreet \
+    -p 5432:5432 rubbish-db:latest
+$ docker exec -it rubbish-db-container alembic -c test_alembic.ini upgrade head
+```
+
+This creates a PostGIS database listening on the port 5432 and runs the database migration on it to populate the database.
+
+Assuming you have `psql` installed locally, you can verify that things are working as expected by running:
+
+```bash
+$ psql -U rubbish-test-user -h localhost -p 5432 rubbish
+```
+
+Finally, to run the tests:
 
 ```bash
 cd python/rubbish/admin/tests

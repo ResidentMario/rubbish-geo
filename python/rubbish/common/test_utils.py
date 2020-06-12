@@ -4,7 +4,6 @@ Methods useful for testing used in both admin and client tests.
 import sqlalchemy as sa
 import geopandas as gpd
 from datetime import datetime, timedelta
-import getpass
 
 import unittest
 from unittest.mock import patch, call, Mock, ANY
@@ -13,7 +12,7 @@ import pytest
 import rubbish
 from rubbish.common.db_ops import reset_db, db_sessionmaker
 
-get_db = lambda: f"postgresql://{getpass.getuser()}@localhost/rubbish"
+get_db = lambda: f"postgresql://rubbish-test-user:polkstreet@localhost:5432/rubbish"
 
 def reset_auto_increment():
     with patch('rubbish.common.db_ops.get_db', new=get_db):

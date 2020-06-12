@@ -1,0 +1,37 @@
+dist: xenial
+language: python
+sudo: true
+python:
+  - "3.7"
+services:
+  - docker
+install:
+  - docker build --file Dockerfile.database --tag rubbish-db .
+  - docker run -d
+      --name rubbish-db-container
+      -e POSTGRES_DB=rubbish
+      -e POSTGRES_USER=rubbish-test-user
+      -e POSTGRES_PASSWORD=polkstreet
+      -p 5432:5432 rubbish-db:latest
+  - chmod +x scripts/wait_for_postgres.sh && ./scripts/wait_for_postgres.sh
+  - docker exec -it rubbish-db-container alembic -c test_alembic.ini upgrade head
+
+  - sudo apt update
+  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - source "$HOME/miniconda/etc/profile.d/conda.sh"
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda info -a
+
+  - conda create -c conda-forge -q -n test-environment python=$TRAVIS_PYTHON_VERSION geopandas geopy osmnx
+  - conda activate test-environment
+  - pip install git+https://github.com/geopandas/geopandas.git@3cba9
+  - pushd python && pip install .[develop] && popd
+script:
+  - pytest python/rubbish/admin/tests/tests.py
+  - pytest python/rubbish/client/tests/tests.py
+# # This is an older version of postgres because newer versions seem to not be 100% supported.
+# # Cf. https://github.com/travis-ci/travis-ci/issues/8537
+# before_script:
+#   - sudo apt-get install postgresql-9.6-postgis-2.3 postgis -y -q

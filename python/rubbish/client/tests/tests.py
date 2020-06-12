@@ -7,6 +7,7 @@ import datetime as dt
 from datetime import datetime, timedelta, timezone
 from shapely.geometry import Point, LineString
 import random
+import os
 
 import unittest
 from unittest.mock import patch
@@ -33,7 +34,9 @@ class TestWritePickups(unittest.TestCase):
     def setUp(self):
         with patch('rubbish.common.db_ops.get_db', new=get_db):
             self.session = db_sessionmaker()()
-        self.grid = gpd.read_file("fixtures/grid.geojson")
+        self.grid = gpd.read_file(
+            os.path.dirname(os.path.realpath(__file__)) + "/fixtures/grid.geojson"
+        )
 
     @clean_db
     @alias_test_db
