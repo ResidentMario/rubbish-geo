@@ -39,6 +39,7 @@ def upgrade():
     op.create_table(
         "sectors",
         sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("name", sa.String, nullable=False),
         sa.Column("geometry", Geometry("MULTIPOLYGON", srid=4326))
     )
     # Centerlines are the workhorse of the Rubbish app.
