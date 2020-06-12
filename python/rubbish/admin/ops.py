@@ -4,7 +4,6 @@ Admin methods for interacting with zones.
 
 import os
 import json
-from json import JSONDecodeError
 from datetime import datetime
 
 import osmnx as ox
@@ -237,3 +236,5 @@ def show_sectors():
     table.add_column("Name", justify="left")
     for sector in session.query(Sector).all():
         table.add_row(str(sector.id), sector.name)
+
+__all__ = ['update_zone', 'show_zones', 'insert_sector', 'delete_sector', 'show_sectors']
