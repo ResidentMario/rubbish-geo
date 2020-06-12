@@ -78,7 +78,7 @@ def delete_sector(sector_name):
 
 @click.command(name="show-sectors", short_help="Pretty-prints sectors in the database.")
 def show_sectors():
-    show_sectors()
+    _show_sectors()
 
 cli.add_command(connect)
 cli.add_command(get_db)
@@ -88,3 +88,4 @@ cli.add_command(update_zone)
 cli.add_command(show_zones)
 cli.add_command(insert_sector)
 cli.add_command(delete_sector)
+cli.add_command(show_sectors)
