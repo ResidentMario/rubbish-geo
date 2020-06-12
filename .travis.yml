@@ -1,0 +1,32 @@
+dist: xenial
+language: python
+python:
+  - "3.7"
+install:
+  - sudo apt update
+  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - source "$HOME/miniconda/etc/profile.d/conda.sh"
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda info -a
+
+  - git clone https://github.com/ResidentMario/rubbish-api-service.git
+  - conda create -c -q -n test-environment python=$TRAVIS_PYTHON_VERSION geopandas geopy
+  - pushd rubbish-api-service/python && pip install .[develop] && popd
+
+  script:
+  - CONNSTR=postgresql://$(whoami)@localhost/postgres && psql $CONNSTR -c "CREATE DATABASE rubbish;"
+  - rubbish-admin set-db postgresql://$(whoami)@localhost/rubbish
+  - pg_ctl -D /usr/local/var/postgres start
+  - pytest rubbish-api-service/python/admin/tests/tests.py
+  - pytest rubbish-api-service/python/client/tests/tests.py
+# This is an older version of postgres because newer versions seem to not be 100% supported.
+# cf. https://github.com/travis-ci/travis-ci/issues/8537
+addons:
+  postgresql: 9.6
+  apt:
+    packages:
+    - postgresql-9.6-postgis-2.3
+before_script:
+  - psql -U postgres -c "create extension postgis"
