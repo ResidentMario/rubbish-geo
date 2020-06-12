@@ -26,8 +26,8 @@ install:
 
   - conda create -c conda-forge -q -n test-environment python=$TRAVIS_PYTHON_VERSION geopandas geopy osmnx
 script:
-  - pytest python/admin/tests/tests.py
-  - pytest python/client/tests/tests.py
+  - pytest python/rubbish/admin/tests/tests.py
+  - pytest python/rubbish/client/tests/tests.py
 # # This is an older version of postgres because newer versions seem to not be 100% supported.
 # # Cf. https://github.com/travis-ci/travis-ci/issues/8537
 # before_script:
