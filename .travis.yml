@@ -26,7 +26,7 @@ install:
 
   - conda create -c conda-forge -q -n test-environment python=$TRAVIS_PYTHON_VERSION geopandas geopy osmnx
   - conda activate test-environment
-  - pip install .[develop]
+  - pushd python && pip install .[develop] && popd
 script:
   - pytest python/rubbish/admin/tests/tests.py
   - pytest python/rubbish/client/tests/tests.py
