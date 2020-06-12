@@ -12,10 +12,11 @@ import geopandas as gpd
 import sqlalchemy as sa
 from geopy.distance import distance
 import shapely
-import rich
+from rich.console import Console
+from rich.table import Table
 
 from rubbish.common.db_ops import db_sessionmaker, get_db
-from rubbish.common.orm import Zone, ZoneGeneration, Centerline
+from rubbish.common.orm import Zone, ZoneGeneration, Centerline, Sector
 
 def _calculate_linestring_length(linestring):
     length = 0
@@ -137,7 +138,6 @@ def update_zone(osmnx_name, name, centerlines=None):
     finally:
         session.close()
 
-# TODO: WIP below
 def show_zones():
     """Pretty-prints a list of zones in the database."""
     session = db_sessionmaker()()
@@ -148,47 +148,92 @@ def show_zones():
     if len(zones) == 0:
         print("No zones in the database. :(")
     else:
-        console = rich.Console()
-        table = rich.Table(show_header=True, header_style="bold magenta")
+        console = Console()
+        table = Table(show_header=True, header_style="bold magenta")
         table.add_column("ID", justify="left")
         table.add_column("Name", justify="left")
         table.add_column("OSMNX Name", justify="left")
         table.add_column("# Generations", justify="right")
         table.add_column("# Centerlines", justify="right")
         for zone in zones:
+            zone_gen_ids = [gen.id for gen in zone.zone_generations]
+            n_centerlines = (
+                session.query(Centerline).filter(Centerline.id in zone_gen_ids).count()
+            )
             table.add_row(
-                Zone.id, Zone.name, Zone.osmnx_name, len(Zone.zone_generations), "TODO"
+                str(zone.id), zone.name, zone.osmnx_name, str(len(zone.zone_generations)),
+                str(n_centerlines)
             )
         console.print(table)
 
 def _validate_sector_geom(filepath):
-    if not os.path.exists(filepath) or not os.path.isdir(filepath):
+    if not os.path.exists(filepath) or os.path.isdir(filepath):
         raise ValueError(f"File {filepath} does not exist or is not a file.")
-    with open(filepath, "r") as fp:
-        try:
-            sector_shape = json.loads(filepath.read())
-        except JSONDecodeError:
-            raise ValueError(
-                f"Could not decode the file at {filepath}, are you sure it's in GeoJSON format?"
-            )
     try:
-        sector_shape = shapely.geometry.shape(sector_shape)
+        sector_shape = (gpd.read_file(filepath)
+            .assign(tmpcol=0)
+            .dissolve(by='tmpcol')
+            .geometry.iloc[0]
+        )
     except ValueError:
         raise ValueError(
             f"Could not decode the file at {filepath}, are you sure it's in GeoJSON format?"
         )
-    if sector_shape.geom_type not in ["Polygon", "MultiPolygon", "GeometryCollection"]:
-        raise ValueError(f"Input sector has unsupported {sector_shape.geom_type} type.")
+
+    if sector_shape.geom_type == "Polygon":
+        sector_shape = shapely.geometry.MultiPolygon([sector_shape])  # DB requirement
+    elif sector_shape.geom_type != "MultiPolygon":
+        raise ValueError(f"Input sector has unsupported {sector_shape.geom_type} union type.")
     return sector_shape
 
 def insert_sector(sector_name, filepath):
-    # TODO: fail if sector_name already exists (force delete_sector first).
+    session = db_sessionmaker()()
+
+    if session.query(Sector).filter_by(name=sector_name).count() != 0:
+        raise ValueError(
+            f"The database already contains a sector with the name {sector_name!r}. "
+            f"If you are redefining the same sector, please run `delete_sector({sector_name!r})` "
+            f"first. Otherwise, please choose a different name for this sector."
+        )
+
     sector_shape = _validate_sector_geom(filepath)
-    pass
+    sector = Sector(name=sector_name, geometry=f'SRID=4326;{str(sector_shape)}')
+    session.add(sector)
+    try:
+        session.commit()
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 def delete_sector(sector_name):
-    pass
+    session = db_sessionmaker()()
+
+    sector = session.query(Sector).filter_by(name=sector_name).one_or_none()
+    if sector is None:
+        raise ValueError(f"Cannot delete sector {sector_name!r}: no such sector in the database.")
+
+    session.delete(sector)
+    try:
+        session.commit()
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 def show_sectors():
     """Pretty-prints a list of sectors in the database."""
-    pass
+    session = db_sessionmaker()()
+    
+    sectors = session.query(Sector).all()
+    if len(sectors) == 0:
+        print("No sectors in the database. :(")
+
+    console = Console()
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("ID", justify="left")
+    table.add_column("Name", justify="left")
+    for sector in session.query(Sector).all():
+        table.add_row(str(sector.id), sector.name)

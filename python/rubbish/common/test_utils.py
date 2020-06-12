@@ -13,7 +13,7 @@ import pytest
 import rubbish
 from rubbish.common.db_ops import reset_db, db_sessionmaker
 
-get_db = lambda: f"postgresql://{getpass.getuser()}@localhost/postgres"
+get_db = lambda: f"postgresql://{getpass.getuser()}@localhost/rubbish"
 
 def reset_auto_increment():
     with patch('rubbish.common.db_ops.get_db', new=get_db):

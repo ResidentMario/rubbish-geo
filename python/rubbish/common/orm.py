@@ -32,10 +32,11 @@ class ZoneGeneration(Base):
 class Sector(Base):
     __tablename__ = "sectors"
     id = sa.Column(sa.Integer, primary_key=True)
+    name = sa.Column(sa.String)
     geometry = sa.Column(Geometry)
 
     def __repr__(self):
-        return f"<Sector id={self.id} geometry={self.geometry}>"
+        return f"<Sector id={self.id} name={self.name} geometry={self.geometry}>"
 
 class Centerline(Base):
     __tablename__ = "centerlines"
