@@ -5,6 +5,16 @@ python:
   - "3.7"
 install:
   - sudo apt update
+  # This is an older version of postgres because newer versions seem to not be 100% supported.
+  # Cf. https://github.com/travis-ci/travis-ci/issues/8537
+  - sudo apt-get install postgresql-9.6-postgis-2.3 postgis -y -q
+  - export PGHOST=localhost PGPORT=5432 PGDATA=$HOME/pgsql/data
+  - mkdir -p $PGDATA
+  - pg_ctl initdb && pg_ctl start
+  - CONNSTR=postgresql://$(whoami)@localhost:5432/postgres &&
+    psql $CONNSTR -c "CREATE DATABASE rubbish;" &&
+    psql $CONNSTR -c "CREATE EXTENSION postgis"
+
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
   - bash miniconda.sh -b -p $HOME/miniconda
   - source "$HOME/miniconda/etc/profile.d/conda.sh"
@@ -18,16 +28,6 @@ install:
   - pushd rubbish-api-service/python && pip install .[develop] && popd
 
 script:
-  - export PGHOST=localhost PGPORT=5432 PGDATA=$HOME/pgsql/data
-  - mkdir -p $PGDATA
-  - pg_ctl initdb && pg_ctl start
-  - CONNSTR=postgresql://$(whoami)@localhost:5432/postgres &&
-    psql $CONNSTR -c "CREATE DATABASE rubbish;" &&
-    psql $CONNSTR -c "CREATE EXTENSION postgis"
   - rubbish-admin set-db postgresql://$(whoami)@localhost:5432/rubbish
   - pytest rubbish-api-service/python/admin/tests/tests.py
   - pytest rubbish-api-service/python/client/tests/tests.py
-# This is an older version of postgres because newer versions seem to not be 100% supported.
-# Cf. https://github.com/travis-ci/travis-ci/issues/8537
-before_script:
-  - sudo apt-get install postgresql-9.6-postgis-2.3 postgis -y -q
