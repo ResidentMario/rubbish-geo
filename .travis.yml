@@ -22,7 +22,7 @@ install:
   - pytest rubbish-api-service/python/admin/tests/tests.py
   - pytest rubbish-api-service/python/client/tests/tests.py
 # This is an older version of postgres because newer versions seem to not be 100% supported.
-# cf. https://github.com/travis-ci/travis-ci/issues/8537
+# Cf. https://github.com/travis-ci/travis-ci/issues/8537
 addons:
   postgresql: 9.6
   apt:
