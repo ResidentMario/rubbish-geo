@@ -22,7 +22,7 @@ from rubbish.admin.ops import update_zone
 
 def valid_pickups_from_geoms(geoms, curb=None):
     return [{
-        'firebase_id': i,
+        'firebase_id': hash(i),
         'type': random.choice(RUBBISH_TYPES),
         'timestamp': str(datetime.now().replace(tzinfo=timezone.utc).timestamp()),
         'curb': random.choice(['left', 'right']) if curb is None else curb,

@@ -62,7 +62,7 @@ def upgrade():
     op.create_table(
         "pickups",
         sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("firebase_id", sa.Integer, nullable=False),  # foreign key to the app DB
+        sa.Column("firebase_id", sa.String, nullable=False),  # foreign key to the app DB
         sa.Column("centerline_id", sa.Integer, sa.ForeignKey("centerlines.id"), nullable=False),
         sa.Column("type", sa.Integer, nullable=False),
         sa.Column("timestamp", sa.DateTime, nullable=False),
