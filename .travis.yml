@@ -13,7 +13,7 @@ install:
       -e POSTGRES_USER=rubbish-test-user
       -e POSTGRES_PASSWORD=polkstreet
       -p 5432:5432 rubbish-db:latest
-  - chmod +x wait_for_postgres.sh && ./wait_for_postgres.sh
+  - chmod +x scripts/wait_for_postgres.sh && ./scripts/wait_for_postgres.sh
   - docker exec -it rubbish-db-container alembic -c test_alembic.ini upgrade head
 
   - sudo apt update
