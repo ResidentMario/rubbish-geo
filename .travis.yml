@@ -19,6 +19,7 @@ install:
 
 script:
   - sudo mkdir -p /var/lib/pgsql/data
+  - sudo chmod 666 /var/lib/pgsql/data
   - export PGHOST=localhost PGPORT=5432 PGDATA=/var/lib/pgsql/data
   - pg_ctl initdb && pg_ctl start
   - CONNSTR=postgresql://$(whoami)@localhost:5432/postgres &&
