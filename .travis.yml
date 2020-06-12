@@ -7,11 +7,11 @@ services:
   - docker
 install:
   - docker build --file Dockerfile.database --tag rubbish-db .
-  - docker run -d \
-      --name rubbish-db-container \
-      -e POSTGRES_DB=rubbish \
-      -e POSTGRES_USER=rubbish-test-user \
-      -e POSTGRES_PASSWORD=polkstreet \
+  - docker run -d
+      --name rubbish-db-container
+      -e POSTGRES_DB=rubbish
+      -e POSTGRES_USER=rubbish-test-user
+      -e POSTGRES_PASSWORD=polkstreet
       -p 5432:5432 rubbish-db:latest
   - docker exec -it rubbish-db-container alembic -c test_alembic.ini upgrade head
 
