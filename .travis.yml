@@ -19,7 +19,8 @@ install:
 
 script:
   - sudo mkdir -p /var/lib/pgsql/data
-  - PGHOST=localhost PGPORT=5432 PGDATA=/var/lib/pgsql/data pg_ctl start
+  - export PGHOST=localhost PGPORT=5432 PGDATA=/var/lib/pgsql/data
+  - pg_ctl initdb && pg_ctl start
   - CONNSTR=postgresql://$(whoami)@localhost:5432/postgres &&
     psql $CONNSTR -c "CREATE DATABASE rubbish;" &&
     psql $CONNSTR -c "CREATE EXTENSION postgis"
