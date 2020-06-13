@@ -21,7 +21,8 @@ def _calculate_linestring_length(linestring):
     length = 0
     for idx_b in range(1, len(linestring.coords)):
         idx_a = idx_b - 1
-        length += distance(linestring.coords[idx_a], linestring.coords[idx_b]).meters
+        # NOTE: geopy uses (y, x) order, shapely uses (x, y) order.
+        length += distance(linestring.coords[idx_a][::-1], linestring.coords[idx_b][::-1]).meters
     return length
 
 def update_zone(osmnx_name, name, centerlines=None):
