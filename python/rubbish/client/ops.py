@@ -202,4 +202,118 @@ def write_pickups(pickups):
     """
     return _munge_pickups(pickups)
 
-__all__ = ['write_pickups']
+def radial_get(coord, distance, include_na=False, offset=0):
+    """
+    Returns all blockface statistics for blockfaces containing at least one point at most
+    ``distance`` away from ``coord``.
+
+    Parameters
+    ----------
+    coord : (x, y) coordinate tuple
+        Centerpoint for the scan.
+    distance : int
+        Distance (in meters) from centerpoint to scan for.
+    include_na : bool, optional
+        Whether or not to include blockfaces for which blockface statistics do not yet exist.
+        Defaults to ``False``.
+
+        Blockfaces with no statistics have not met the minimum threshold for assignment of
+        statistics yet (at time of writing, this means that no runs touching at least 50% of
+        the blockface have been saved to the database yet).
+
+        The additional blockfaces returned when ``include_na=True`` is set will only have
+        their geometry field set. All other fields will be `None`.
+    offset : int, optional
+        The results offset to use. Defaults to `0`, e.g. no offset.
+
+        To prevent inappropriately large requests from overloading the database, this API is
+        limited to returning 1000 items at a time. Use this parameter to fetch more results
+        for a query exceeding this limit.
+
+    Returns
+    -------
+    ``dict``
+        Query result.
+    """
+    pass
+
+def sector_get(sector_name, include_na=False, offset=0):
+    """
+    Returns all blockface statistics for blockfaces contained in a sector. Only blockfaces located
+    completely within the sector count. Blockfaces touching sector edges are ok, blockfaces
+    containing some points outside of the sector are not.
+
+    Parameters
+    ----------
+    sector_name: str
+        Unique sector name.
+    include_na : bool, optional
+        Whether or not to include blockfaces for which blockface statistics do not yet exist.
+        Defaults to ``False``.
+
+        Blockfaces with no statistics have not met the minimum threshold for assignment of
+        statistics yet (at time of writing, this means that no runs touching at least 50% of
+        the blockface have been saved to the database yet).
+
+        The additional blockfaces returned when ``include_na=True`` is set will only have
+        their geometry field set. All other fields will be `None`.
+    offset : int, optional
+        The results offset to use. Defaults to `0`, e.g. no offset.
+
+        To prevent inappropriately large requests from overloading the database, this API is
+        limited to returning 1000 items at a time. Use this parameter to fetch more results
+        for a query exceeding this limit.
+
+    Returns
+    -------
+    ``dict``
+        Query result.
+    """
+    pass
+
+def coord_get(coord, include_na=False):
+    """
+    Returns blockface statistics and run history for the set of blockfaces for the centerline
+    closest to the given coordinate.
+
+    Parameters
+    ----------
+    coord: (x, y) coordinate tuple
+        Origin point for the snapped selection.
+    include_na : bool, optional
+        Whether or not to include blockfaces for which blockface statistics do not exist yet.
+        Defaults to ``False``.
+
+        Blockfaces with no statistics have not met the minimum threshold for assignment of
+        statistics yet (at time of writing, this means that no runs touching at least 50% of
+        the blockface have been saved to the database yet).
+
+        When ``include_na=True``, the blockfaces returned will be that of the nearest centerline.
+
+        When ``include_na=False``, the blockfaces returned will be that of the nearest centerline
+        having at least one blockface statistic.
+    
+    Returns
+    -------
+    ``dict``
+        Query result.    
+    """
+    pass
+
+def run_get(run_id):
+    """
+    Returns blockface statistics and run-specific data for a specific run by id.
+
+    Parameters
+    ----------
+    run_id : str
+        The run id. Note: this is stored as ``firebase_id`` in the ``Pickups`` table.
+
+    Returns
+    -------
+    ``dict``
+        Query result.    
+    """
+    pass
+
+__all__ = ['write_pickups', 'radial_get', 'sector_get', 'coord_get', 'run_get']
