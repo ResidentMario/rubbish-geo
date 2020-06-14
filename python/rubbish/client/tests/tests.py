@@ -18,7 +18,7 @@ from rubbish.common.db_ops import reset_db, db_sessionmaker
 from rubbish.common.orm import Pickup, BlockfaceStatistic
 from rubbish.common.test_utils import get_db, clean_db, alias_test_db
 from rubbish.common.consts import RUBBISH_TYPES
-from rubbish.client.ops import write_pickups, run_get
+from rubbish.client.ops import write_pickups, run_get, coord_get
 from rubbish.admin.ops import update_zone
 
 def valid_pickups_from_geoms(geoms, firebase_run_id='foo', curb=None):
@@ -132,20 +132,9 @@ class TestWritePickups(unittest.TestCase):
         blockface_statistics = self.session.query(BlockfaceStatistic).all()
         assert len(blockface_statistics) == 1
 
-# Pickups with no missing values near a segment.
-# TODO
-
-# Pickups on a single street missing cardinality.
-# TODO
-
-# Pickups with no missing values spanning multiple segments.
-# TODO
-
-# Pickups spanning multiple streets and missing cardinality.
-# TODO
-
-# Pickups spanning multiple streets partially missing cardinality.
-# TODO
+# TODO: more comprehensive write pickups tests to test the point assignment logic
+# TODO: test blockface logic, including distance calculations
+# TODO: move away from using the grid.json fixture, define that as a function instead.
 
 class TestRunGet(unittest.TestCase):
     def setUp(self):
@@ -195,3 +184,38 @@ class TestRunGet(unittest.TestCase):
         result = run_get('bar')
         assert len(result) == 1
         assert result[0]['curb'] == 1
+
+class TestCoordGet(unittest.TestCase):
+    def setUp(self):
+        with patch('rubbish.common.db_ops.get_db', new=get_db):
+            self.session = db_sessionmaker()()
+        self.grid = gpd.read_file(
+            os.path.dirname(os.path.realpath(__file__)) + "/fixtures/grid.geojson"
+        )
+
+    @clean_db
+    @alias_test_db
+    def testCoordGetIncludeNA(self):
+        update_zone("Grid City, California", "Grid City, California", centerlines=self.grid)
+
+        # case 1: no statistics so stats is empty
+        result = coord_get((0.1, 0.0001), include_na=True)
+        assert set(result.keys()) == {'centerline', 'stats'}
+        assert result['centerline'] is not None
+        assert len(result['stats']) == 0
+
+        # case 2: no right statistics so stats only has left stats
+        input = valid_pickups_from_geoms(
+            [Point(0.1, 0.0001), Point(0.9, 0.0001)], firebase_run_id='foo', curb='left'
+        )
+        write_pickups(input)
+        result = coord_get((0.1, 0.0001), include_na=True)
+        assert len(result['stats']) == 1
+
+        # case 3: both sides have stats, so both sides return
+        input = valid_pickups_from_geoms(
+            [Point(0.1, -0.0001), Point(0.9, -0.0001)], firebase_run_id='bar', curb='right'
+        )
+        write_pickups(input)
+        result = coord_get((0.1, -0.0001), include_na=True)
+        assert len(result['stats']) == 2

@@ -16,6 +16,42 @@ from rubbish.common.db_ops import db_sessionmaker
 from rubbish.common.orm import Pickup, Centerline, BlockfaceStatistic
 from rubbish.common.consts import RUBBISH_TYPES, RUBBISH_TYPE_MAP
 
+# TODO: refactor write_pickups so I can clean up this method's crazy output signature.
+def _snap_point(orig_point, session):
+    orig_point_wkt = f"SRID=4326;{str(orig_point)}"
+    matches = (session
+        .query(Centerline)
+        .order_by(Centerline.geometry.distance_centroid(orig_point_wkt))
+        .limit(100)
+        .all()
+    )
+    if len(matches) == 0:
+        raise ValueError("No centerlines in the database!")
+    match, match_geom_wkt, dist = (session
+        .query(
+            Centerline,
+            geoalchemy2.functions.ST_AsText(Centerline.geometry),
+            geoalchemy2.functions.ST_Distance(Centerline.geometry, orig_point_wkt)
+        )
+        .order_by(Centerline.geometry.ST_Distance(orig_point_wkt))
+        .first()
+    )
+    # unrectified coordinate values so these are approximate
+    if dist > 0.0009:
+        warnings.warn(
+            f"Matching pickup {orig_point_wkt} to centerline {str(match.geometry)} "
+            f"located >100m (but <1km) away. This indicates potential data problems."
+        )
+    if dist > 0.001:
+        warnings.warn(
+            f"{orig_point_wkt} is >1km from nearest centerline and was discarded."
+        )
+    
+    match_geom = shapely.wkt.loads(match_geom_wkt)
+    linear_reference = match_geom.project(orig_point, normalized=True)
+    snapped_point = match_geom.interpolate(linear_reference, normalized=True)
+    return match, match_geom, snapped_point, linear_reference
+
 def _munge_pickups(pickups):
     if len(pickups) == 0:
         return
@@ -69,38 +105,7 @@ def _munge_pickups(pickups):
     centerline_objs, pickup_objs = dict(), dict()
     for pickup in pickups:
         orig_point = pickup["geometry"]
-        orig_point_wkt = f"SRID=4326;{str(orig_point)}"
-        matches = (session
-            .query(Centerline)
-            .order_by(Centerline.geometry.distance_centroid(orig_point_wkt))
-            .limit(100)
-            .all()
-        )
-        if len(matches) == 0:
-            raise ValueError("No centerlines in the database!")
-        match, match_geom_wkt, dist = (session
-            .query(
-                Centerline,
-                geoalchemy2.functions.ST_AsText(Centerline.geometry),
-                geoalchemy2.functions.ST_Distance(Centerline.geometry, orig_point_wkt)
-            )
-            .order_by(Centerline.geometry.ST_Distance(orig_point_wkt))
-            .first()
-        )
-        # unrectified coordinate values so these are approximate
-        if dist > 0.0009:
-            warnings.warn(
-                f"Matching pickup {orig_point_wkt} to centerline {str(match.geometry)} "
-                f"located >100m (but <1km) away. This indicates potential data problems."
-            )
-        if dist > 0.001:
-            warnings.warn(
-                f"{orig_point_wkt} is >1km from nearest centerline and was discarded."
-            )
-        
-        match_geom = shapely.wkt.loads(match_geom_wkt)
-        linear_reference = match_geom.project(orig_point, normalized=True)
-        snapped_point = match_geom.interpolate(linear_reference, normalized=True)
+        match, match_geom, snapped_point, linear_reference = _snap_point(orig_point, session)
 
         # For now, no curb means left curb. See the to-do item below this code block.
         if pickup['curb'] is None:
@@ -207,6 +212,42 @@ def write_pickups(pickups):
     """
     return _munge_pickups(pickups)
 
+def _bf_statistic_to_dict(stat):
+    # WKBElement -> shapely.geometry.LineString -> dict -> JSONified dict
+    # Cf. https://gis.stackexchange.com/a/233246/74038
+    #     https://stackoverflow.com/a/57792988/1993206
+    geom = json.dumps(
+        shapely.geometry.mapping(
+            to_shape(
+                stat.centerline.geometry
+            )
+        )
+    )
+    return {
+        "centerline_id": stat.centerline_id,
+        "centerline_geometry": geom,
+        "centerline_length_in_meters": stat.centerline.length_in_meters,
+        "centerline_name": stat.centerline.name,
+        "curb": stat.curb,
+        "rubbish_per_meter": stat.rubbish_per_meter,
+        "num_runs": stat.num_runs,
+    }
+
+def _centerline_to_dict(centerline):
+    geom = json.dumps(
+        shapely.geometry.mapping(
+            to_shape(
+                centerline.geometry
+            )
+        )
+    )
+    return {
+        "id": centerline.id,
+        "geometry": centerline.geometry,
+        "centerline_length_in_meters": centerline.length_in_meters,
+        "centerline_name": centerline.name,
+    }
+
 def radial_get(coord, distance, include_na=False, offset=0):
     """
     Returns all blockface statistics for blockfaces containing at least one point at most
@@ -240,7 +281,7 @@ def radial_get(coord, distance, include_na=False, offset=0):
     ``dict``
         Query result.
     """
-    pass
+    raise NotImplementedError
 
 def sector_get(sector_name, include_na=False, offset=0):
     """
@@ -274,12 +315,11 @@ def sector_get(sector_name, include_na=False, offset=0):
     ``dict``
         Query result.
     """
-    pass
+    raise NotImplementedError
 
 def coord_get(coord, include_na=False):
     """
-    Returns blockface statistics and run history for the set of blockfaces for the centerline
-    closest to the given coordinate.
+    Returns blockface statistics for the centerline closest to the given coordinate.
 
     Parameters
     ----------
@@ -303,7 +343,20 @@ def coord_get(coord, include_na=False):
     ``dict``
         Query result.    
     """
-    pass
+    session = db_sessionmaker()()
+    coord = shapely.geometry.Point(*coord)
+    match, _, _, _ = _snap_point(coord, session)
+
+    if include_na == True:
+        stats = (session
+            .query(BlockfaceStatistic)
+            .filter(BlockfaceStatistic.centerline_id == match.id)
+            .all()
+        )
+        stats_out = list(map(_bf_statistic_to_dict, stats))
+        return {"centerline": _centerline_to_dict(match), "stats": stats_out}
+    else:
+        raise NotImplementedError
 
 def run_get(run_id):
     """
@@ -346,27 +399,6 @@ def run_get(run_id):
         if stat.curb in curb_map[stat.centerline_id]:
             stats_filtered.append(stat)
 
-    def to_dict(stat):
-        # WKBElement -> shapely.geometry.LineString -> dict -> JSONified dict
-        # Cf. https://gis.stackexchange.com/a/233246/74038
-        #     https://stackoverflow.com/a/57792988/1993206
-        geom = json.dumps(
-            shapely.geometry.mapping(
-                to_shape(
-                    stat.centerline.geometry
-                )
-            )
-        )
-        return {
-            "centerline_id": stat.centerline_id,
-            "centerline_geometry": geom,
-            "centerline_length_in_meters": stat.centerline.length_in_meters,
-            "centerline_name": stat.centerline.name,
-            "curb": stat.curb,
-            "rubbish_per_meter": stat.rubbish_per_meter,
-            "num_runs": stat.num_runs,
-        }
-
-    return list(map(to_dict, stats_filtered))
+    return list(map(_bf_statistic_to_dict, stats_filtered))
 
 __all__ = ['write_pickups', 'radial_get', 'sector_get', 'coord_get', 'run_get']
