@@ -54,3 +54,5 @@ pytest tests.py
 cd python/rubbish/client/tests
 pytest tests.py
 ```
+
+Note: you will need to rebuild the container (with `--no-cache` set) every time you update the database migrations.

@@ -56,13 +56,15 @@ class Centerline(Base):
             f"""<Centerline name={self.name} id={self.id} geometry={self.geometry} """
             f"""first_zone_generation={self.first_zone_generation} """
             f"""last_zone_generation={self.last_zone_generation} """
-            f"""length={self.length} zone_id={self.zone_id} osmnid={self.osmid}>"""
+            f"""length_in_meters={self.length_in_meters} zone_id={self.zone_id} """
+            f"""osmnid={self.osmid}>"""
         )
 
 class Pickup(Base):
     __tablename__ = "pickups"
     id = sa.Column("id", sa.Integer, primary_key=True)
-    firebase_id = sa.Column("firebase_id", sa.Integer, nullable=False)
+    firebase_id = sa.Column("firebase_id", sa.String, nullable=False)
+    firebase_run_id = sa.Column("firebase_run_id", sa.String, nullable=False)
     centerline_id =\
         sa.Column("centerline_id", sa.Integer, sa.ForeignKey("centerlines.id"), nullable=False)
     type = sa.Column("type", sa.Integer, nullable=False)
@@ -78,6 +80,7 @@ class Pickup(Base):
             f"""<Pickup id={self.id} """
             f"""geometry={self.geometry} snapped_geometry={self.snapped_geometry} """
             f"""centerline_id={self.centerline_id} firebase_id={self.firebase_id} """
+            f"""firebase_run_id={self.firebase_run_id} """
             f"""type={self.type} timestamp={self.timestamp} """
             f"""linear_reference={self.linear_reference} curb={self.curb}>"""
         )

@@ -1,12 +1,16 @@
 """
 Python client library I/O methods.
 """
+import warnings
+from datetime import datetime, timedelta
+from collections import defaultdict
+import json
+
 import sqlalchemy as sa
 import shapely
 from shapely.geometry import Point
 import geoalchemy2
-import warnings
-from datetime import datetime, timedelta
+from geoalchemy2.shape import to_shape
 
 from rubbish.common.db_ops import db_sessionmaker
 from rubbish.common.orm import Pickup, Centerline, BlockfaceStatistic
@@ -107,6 +111,7 @@ def _munge_pickups(pickups):
             snapped_geometry=f'SRID=4326;{str(snapped_point)}',
             centerline_id=match.id,
             firebase_id=pickup['firebase_id'],
+            firebase_run_id=pickup['firebase_run_id'],
             type=pickup['type'],
             timestamp=datetime.utcfromtimestamp(pickup['timestamp']),
             linear_reference=linear_reference,
@@ -314,6 +319,54 @@ def run_get(run_id):
     ``dict``
         Query result.    
     """
-    pass
+    session = db_sessionmaker()()
+    # Runs are not a native object in the analytics database. Instead, pickups are stored
+    # with firebase_run_id and centerline_id columns set. We use this to get the
+    # (centerline, curb) combinations this run touched. We then find all blockface statistics
+    # for the given centerlines. Then we filter out statistics with unmatched curbs: e.g. if
+    # a run went only up the left side of Polk, we'll match both left and right sides, then
+    # filter out the right side.
+    pickups = session.query(Pickup).filter(Pickup.firebase_run_id == run_id).all()
+    if len(pickups) == 0:
+        raise ValueError(f"No pickups matching a run with ID {run_id} in the database.")
+
+    curb_map = defaultdict(list)
+    centerline_ids = []
+    for pickup in pickups:
+        centerline_ids.append(pickup.centerline_id)
+        curb_map[pickup.centerline_id].append(pickup.curb)
+
+    stats = (
+        session.query(BlockfaceStatistic)
+        .filter(BlockfaceStatistic.centerline_id.in_(centerline_ids))
+        .all()
+    )
+    stats_filtered = []
+    for stat in stats:
+        if stat.curb in curb_map[stat.centerline_id]:
+            stats_filtered.append(stat)
+
+    def to_dict(stat):
+        # WKBElement -> shapely.geometry.LineString -> dict -> JSONified dict
+        # Cf. https://gis.stackexchange.com/a/233246/74038
+        #     https://stackoverflow.com/a/57792988/1993206
+        geom = json.dumps(
+            shapely.geometry.mapping(
+                to_shape(
+                    stat.centerline.geometry
+                )
+            )
+        )
+        return {
+            "centerline_id": stat.centerline_id,
+            "centerline_geometry": geom,
+            "centerline_length_in_meters": stat.centerline.length_in_meters,
+            "centerline_name": stat.centerline.name,
+            "curb": stat.curb,
+            "rubbish_per_meter": stat.rubbish_per_meter,
+            "num_runs": stat.num_runs,
+        }
+
+    return list(map(to_dict, stats_filtered))
 
 __all__ = ['write_pickups', 'radial_get', 'sector_get', 'coord_get', 'run_get']
