@@ -6,3 +6,4 @@ __pycache__/
 test_alembic.ini
 .pytest_cache/
 default.profraw
+fixtures/

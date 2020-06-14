@@ -1,42 +1,80 @@
 """
 Methods useful for testing used in both admin and client tests.
 """
-import sqlalchemy as sa
 import geopandas as gpd
-from datetime import datetime, timedelta
+from unittest.mock import patch
+import warnings
 
-import unittest
-from unittest.mock import patch, call, Mock, ANY
-import pytest
+from shapely.geometry import LineString
 
 import rubbish
 from rubbish.common.db_ops import reset_db, db_sessionmaker
+from rubbish.admin.ops import update_zone
 
 get_db = lambda: f"postgresql://rubbish-test-user:polkstreet@localhost:5432/rubbish"
 
-def reset_auto_increment():
-    with patch('rubbish.common.db_ops.get_db', new=get_db):
-        engine = db_sessionmaker()().bind
-        engine.execute('ALTER SEQUENCE zones_id_seq RESTART WITH 1;')
-        engine.execute('ALTER SEQUENCE zone_generations_id_seq RESTART WITH 1;')
-        engine.execute('ALTER SEQUENCE blockface_statistics_id_seq RESTART WITH 1;')
-        engine.execute('ALTER SEQUENCE pickups_id_seq RESTART WITH 1;')
-        engine.execute('ALTER SEQUENCE sectors_id_seq RESTART WITH 1;')
-        engine.execute('ALTER SEQUENCE centerlines_id_seq RESTART WITH 1;')
-
 def clean_db(f):
+    """
+    Wrapper function that resets the database, dropping all data and resetting all ID sequences.
+    """
     def inner(*args, **kwargs):
         with patch('rubbish.common.db_ops.get_db', new=get_db):
             reset_db()
-            reset_auto_increment()
             f(*args, **kwargs)
-            reset_db()
-            reset_auto_increment()
     return inner
 
 def alias_test_db(f):
+    """
+    Wrapper function that overwrites database connection string methods to point to the local test
+    database.
+    """
     def inner(*args, **kwargs):
         with patch('rubbish.common.db_ops.get_db', new=get_db), \
             patch('rubbish.admin.ops.get_db', new=get_db):
             f(*args, **kwargs)
+    return inner
+
+def get_grid():
+    return gpd.GeoDataFrame(
+        {
+            'osmid': range(12),
+            'name': [
+                "0_0_0_1 Street", "0_1_0_2 Street", "0_0_1_0 Street", "1_0_2_0 Street",
+                "2_0_2_1 Street", "2_1_2_2 Street", "2_2_1_2 Street", "1_2_0_2 Street",
+                "1_0_1_1 Street", "0_1_1_1 Street", "1_2_1_1 Street", "2_1_1_1 Street"
+            ],
+            'zone_id': [1] * 12,
+            'first_zone_generation': [1] * 12,
+            'last_zone_generation': [None] * 12
+        },
+        geometry=[
+            LineString([[0, 0], [0, 1]]),
+            LineString([[0, 1], [0, 2]]),
+            LineString([[0, 0], [1, 0]]),
+            LineString([[1, 0], [2, 0]]),
+            LineString([[2, 0], [2, 1]]),
+            LineString([[2, 1], [2, 2]]),
+            LineString([[2, 2], [1, 2]]),
+            LineString([[1, 2], [0, 2]]),
+            LineString([[1, 0], [1, 1]]),
+            LineString([[0, 1], [1, 1]]),
+            LineString([[1, 2], [1, 1]]),
+            LineString([[2, 1], [1, 1]])
+        ],
+        crs="epsg:4326"
+    )
+
+def insert_grid(f):
+    """
+    Wrapper function that inserts the basic street grid centerline data into the database.
+    """
+    grid = get_grid()
+    def inner(*args, **kwargs):
+        with patch('rubbish.common.db_ops.get_db', new=get_db), \
+            patch('rubbish.admin.ops.get_db', new=get_db):
+            # NOTE: this throws a not-geometry warning which is safe to ignore
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                update_zone("Grid City, California", "Grid City, California", centerlines=grid)
+        f(*args, **kwargs)
     return inner
