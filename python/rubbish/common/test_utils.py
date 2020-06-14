@@ -72,9 +72,6 @@ def insert_grid(f):
     def inner(*args, **kwargs):
         with patch('rubbish.common.db_ops.get_db', new=get_db), \
             patch('rubbish.admin.ops.get_db', new=get_db):
-            # NOTE: this throws a not-geometry warning which is safe to ignore
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore')
-                update_zone("Grid City, California", "Grid City, California", centerlines=grid)
+            update_zone("Grid City, California", "Grid City, California", centerlines=grid)
         f(*args, **kwargs)
     return inner
