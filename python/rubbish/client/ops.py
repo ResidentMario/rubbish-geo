@@ -1,16 +1,56 @@
 """
 Python client library I/O methods.
 """
+import warnings
+from datetime import datetime, timedelta
+from collections import defaultdict
+import json
+
 import sqlalchemy as sa
 import shapely
 from shapely.geometry import Point
 import geoalchemy2
-import warnings
-from datetime import datetime, timedelta
+from geoalchemy2.shape import to_shape
 
 from rubbish.common.db_ops import db_sessionmaker
 from rubbish.common.orm import Pickup, Centerline, BlockfaceStatistic
 from rubbish.common.consts import RUBBISH_TYPES, RUBBISH_TYPE_MAP
+
+# TODO: refactor write_pickups so I can clean up this method's crazy output signature.
+def _snap_point(orig_point, session):
+    orig_point_wkt = f"SRID=4326;{str(orig_point)}"
+    matches = (session
+        .query(Centerline)
+        .order_by(Centerline.geometry.distance_centroid(orig_point_wkt))
+        .limit(100)
+        .all()
+    )
+    if len(matches) == 0:
+        raise ValueError("No centerlines in the database!")
+    match, match_geom_wkt, dist = (session
+        .query(
+            Centerline,
+            geoalchemy2.functions.ST_AsText(Centerline.geometry),
+            geoalchemy2.functions.ST_Distance(Centerline.geometry, orig_point_wkt)
+        )
+        .order_by(Centerline.geometry.ST_Distance(orig_point_wkt))
+        .first()
+    )
+    # unrectified coordinate values so these are approximate
+    if dist > 0.0009:
+        warnings.warn(
+            f"Matching pickup {orig_point_wkt} to centerline {str(match.geometry)} "
+            f"located >100m (but <1km) away. This indicates potential data problems."
+        )
+    if dist > 0.001:
+        warnings.warn(
+            f"{orig_point_wkt} is >1km from nearest centerline and was discarded."
+        )
+    
+    match_geom = shapely.wkt.loads(match_geom_wkt)
+    linear_reference = match_geom.project(orig_point, normalized=True)
+    snapped_point = match_geom.interpolate(linear_reference, normalized=True)
+    return match, match_geom, snapped_point, linear_reference
 
 def _munge_pickups(pickups):
     if len(pickups) == 0:
@@ -65,38 +105,7 @@ def _munge_pickups(pickups):
     centerline_objs, pickup_objs = dict(), dict()
     for pickup in pickups:
         orig_point = pickup["geometry"]
-        orig_point_wkt = f"SRID=4326;{str(orig_point)}"
-        matches = (session
-            .query(Centerline)
-            .order_by(Centerline.geometry.distance_centroid(orig_point_wkt))
-            .limit(100)
-            .all()
-        )
-        if len(matches) == 0:
-            raise ValueError("No centerlines in the database!")
-        match, match_geom_wkt, dist = (session
-            .query(
-                Centerline,
-                geoalchemy2.functions.ST_AsText(Centerline.geometry),
-                geoalchemy2.functions.ST_Distance(Centerline.geometry, orig_point_wkt)
-            )
-            .order_by(Centerline.geometry.ST_Distance(orig_point_wkt))
-            .first()
-        )
-        # unrectified coordinate values so these are approximate
-        if dist > 0.0009:
-            warnings.warn(
-                f"Matching pickup {orig_point_wkt} to centerline {str(match.geometry)} "
-                f"located >100m (but <1km) away. This indicates potential data problems."
-            )
-        if dist > 0.001:
-            warnings.warn(
-                f"{orig_point_wkt} is >1km from nearest centerline and was discarded."
-            )
-        
-        match_geom = shapely.wkt.loads(match_geom_wkt)
-        linear_reference = match_geom.project(orig_point, normalized=True)
-        snapped_point = match_geom.interpolate(linear_reference, normalized=True)
+        match, match_geom, snapped_point, linear_reference = _snap_point(orig_point, session)
 
         # For now, no curb means left curb. See the to-do item below this code block.
         if pickup['curb'] is None:
@@ -107,6 +116,7 @@ def _munge_pickups(pickups):
             snapped_geometry=f'SRID=4326;{str(snapped_point)}',
             centerline_id=match.id,
             firebase_id=pickup['firebase_id'],
+            firebase_run_id=pickup['firebase_run_id'],
             type=pickup['type'],
             timestamp=datetime.utcfromtimestamp(pickup['timestamp']),
             linear_reference=linear_reference,
@@ -202,4 +212,193 @@ def write_pickups(pickups):
     """
     return _munge_pickups(pickups)
 
-__all__ = ['write_pickups']
+def _bf_statistic_to_dict(stat):
+    # WKBElement -> shapely.geometry.LineString -> dict -> JSONified dict
+    # Cf. https://gis.stackexchange.com/a/233246/74038
+    #     https://stackoverflow.com/a/57792988/1993206
+    geom = json.dumps(
+        shapely.geometry.mapping(
+            to_shape(
+                stat.centerline.geometry
+            )
+        )
+    )
+    return {
+        "centerline_id": stat.centerline_id,
+        "centerline_geometry": geom,
+        "centerline_length_in_meters": stat.centerline.length_in_meters,
+        "centerline_name": stat.centerline.name,
+        "curb": stat.curb,
+        "rubbish_per_meter": stat.rubbish_per_meter,
+        "num_runs": stat.num_runs,
+    }
+
+def _centerline_to_dict(centerline):
+    geom = json.dumps(
+        shapely.geometry.mapping(
+            to_shape(
+                centerline.geometry
+            )
+        )
+    )
+    return {
+        "id": centerline.id,
+        "geometry": centerline.geometry,
+        "centerline_length_in_meters": centerline.length_in_meters,
+        "centerline_name": centerline.name,
+    }
+
+def radial_get(coord, distance, include_na=False, offset=0):
+    """
+    Returns all blockface statistics for blockfaces containing at least one point at most
+    ``distance`` away from ``coord``.
+
+    Parameters
+    ----------
+    coord : (x, y) coordinate tuple
+        Centerpoint for the scan.
+    distance : int
+        Distance (in meters) from centerpoint to scan for.
+    include_na : bool, optional
+        Whether or not to include blockfaces for which blockface statistics do not yet exist.
+        Defaults to ``False``.
+
+        Blockfaces with no statistics have not met the minimum threshold for assignment of
+        statistics yet (at time of writing, this means that no runs touching at least 50% of
+        the blockface have been saved to the database yet).
+
+        The additional blockfaces returned when ``include_na=True`` is set will only have
+        their geometry field set. All other fields will be `None`.
+    offset : int, optional
+        The results offset to use. Defaults to `0`, e.g. no offset.
+
+        To prevent inappropriately large requests from overloading the database, this API is
+        limited to returning 1000 items at a time. Use this parameter to fetch more results
+        for a query exceeding this limit.
+
+    Returns
+    -------
+    ``dict``
+        Query result.
+    """
+    raise NotImplementedError
+
+def sector_get(sector_name, include_na=False, offset=0):
+    """
+    Returns all blockface statistics for blockfaces contained in a sector. Only blockfaces located
+    completely within the sector count. Blockfaces touching sector edges are ok, blockfaces
+    containing some points outside of the sector are not.
+
+    Parameters
+    ----------
+    sector_name: str
+        Unique sector name.
+    include_na : bool, optional
+        Whether or not to include blockfaces for which blockface statistics do not yet exist.
+        Defaults to ``False``.
+
+        Blockfaces with no statistics have not met the minimum threshold for assignment of
+        statistics yet (at time of writing, this means that no runs touching at least 50% of
+        the blockface have been saved to the database yet).
+
+        The additional blockfaces returned when ``include_na=True`` is set will only have
+        their geometry field set. All other fields will be `None`.
+    offset : int, optional
+        The results offset to use. Defaults to `0`, e.g. no offset.
+
+        To prevent inappropriately large requests from overloading the database, this API is
+        limited to returning 1000 items at a time. Use this parameter to fetch more results
+        for a query exceeding this limit.
+
+    Returns
+    -------
+    ``dict``
+        Query result.
+    """
+    raise NotImplementedError
+
+def coord_get(coord, include_na=False):
+    """
+    Returns blockface statistics for the centerline closest to the given coordinate.
+
+    Parameters
+    ----------
+    coord: (x, y) coordinate tuple
+        Origin point for the snapped selection.
+    include_na : bool, optional
+        Whether or not to include blockfaces for which blockface statistics do not exist yet.
+        Defaults to ``False``.
+
+        Blockfaces with no statistics have not met the minimum threshold for assignment of
+        statistics yet (at time of writing, this means that no runs touching at least 50% of
+        the blockface have been saved to the database yet).
+
+        When ``include_na=True``, the blockfaces returned will be that of the nearest centerline.
+
+        When ``include_na=False``, the blockfaces returned will be that of the nearest centerline
+        having at least one blockface statistic.
+    
+    Returns
+    -------
+    ``dict``
+        Query result.    
+    """
+    session = db_sessionmaker()()
+    coord = shapely.geometry.Point(*coord)
+    match, _, _, _ = _snap_point(coord, session)
+
+    if include_na == True:
+        stats = (session
+            .query(BlockfaceStatistic)
+            .filter(BlockfaceStatistic.centerline_id == match.id)
+            .all()
+        )
+        stats_out = list(map(_bf_statistic_to_dict, stats))
+        return {"centerline": _centerline_to_dict(match), "stats": stats_out}
+    else:
+        raise NotImplementedError
+
+def run_get(run_id):
+    """
+    Returns blockface statistics and run-specific data for a specific run by id.
+
+    Parameters
+    ----------
+    run_id : str
+        The run id. Note: this is stored as ``firebase_id`` in the ``Pickups`` table.
+
+    Returns
+    -------
+    ``dict``
+        Query result.    
+    """
+    session = db_sessionmaker()()
+    # Runs are not a native object in the analytics database. Instead, pickups are stored
+    # with firebase_run_id and centerline_id columns set. We use this to get the
+    # (centerline, curb) combinations this run touched. We then find all blockface statistics
+    # for the given centerlines. Then we filter out statistics with unmatched curbs: e.g. if
+    # a run went only up the left side of Polk, we'll match both left and right sides, then
+    # filter out the right side.
+    pickups = session.query(Pickup).filter(Pickup.firebase_run_id == run_id).all()
+    if len(pickups) == 0:
+        raise ValueError(f"No pickups matching a run with ID {run_id} in the database.")
+
+    curb_map = defaultdict(list)
+    centerline_ids = []
+    for pickup in pickups:
+        centerline_ids.append(pickup.centerline_id)
+        curb_map[pickup.centerline_id].append(pickup.curb)
+
+    stats = (
+        session.query(BlockfaceStatistic)
+        .filter(BlockfaceStatistic.centerline_id.in_(centerline_ids))
+        .all()
+    )
+    stats_filtered = []
+    for stat in stats:
+        if stat.curb in curb_map[stat.centerline_id]:
+            stats_filtered.append(stat)
+
+    return list(map(_bf_statistic_to_dict, stats_filtered))
+
+__all__ = ['write_pickups', 'radial_get', 'sector_get', 'coord_get', 'run_get']
