@@ -66,7 +66,7 @@ def _munge_pickups(pickups):
             if attr not in pickup:
                 raise ValueError(f"Found pickup missing required attribute {attr}.")
         try:
-            geom = shapely.wkt.loads(pickup["geometry"])
+            geom = pickup["geometry"]
         except shapely.errors.WKTReadingError:
             raise shapely.errors.WKTReadingError(
                 f"Pickups include invalid geometry {pickup['geometry']!r}."

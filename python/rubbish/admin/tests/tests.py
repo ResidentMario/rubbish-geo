@@ -10,14 +10,12 @@ import unittest
 from unittest.mock import patch
 import pytest
 import tempfile
-from io import StringIO
-from contextlib import redirect_stdout
 import os
 
 import rubbish
 from rubbish.common.db_ops import reset_db, db_sessionmaker
 from rubbish.common.orm import Zone, ZoneGeneration, Centerline, Sector
-from rubbish.common.test_utils import get_db, clean_db, alias_test_db
+from rubbish.common.test_utils import get_db, clean_db, alias_test_db, insert_grid, get_grid
 from rubbish.admin.ops import update_zone, insert_sector, delete_sector, show_zones, show_sectors
 
 class TestUpdateZone(unittest.TestCase):
@@ -31,8 +29,9 @@ class TestUpdateZone(unittest.TestCase):
     @clean_db
     @alias_test_db
     def testNewZoneWrite(self):
-        update_zone("Grid City, California", "Foo, Bar", centerlines=self.grid)
-
+        grid = get_grid()
+        update_zone("Grid City, California", "Foo, Bar", centerlines=grid)
+        
         zones = self.session.query(Zone).all()
         assert len(zones) == 1
         assert zones[0].id == 1
@@ -54,8 +53,9 @@ class TestUpdateZone(unittest.TestCase):
     @clean_db
     @alias_test_db
     def testExistingZoneIdempotentWrite(self):
-        update_zone("Grid City, California", "Foo, Bar", centerlines=self.grid)
-        update_zone("Grid City, California", "Foo, Bar", centerlines=self.grid)
+        grid = get_grid()
+        update_zone("Grid City, California", "Foo, Bar", centerlines=grid)
+        update_zone("Grid City, California", "Foo, Bar", centerlines=grid)
 
         zones = self.session.query(Zone).all()
         assert len(zones) == 1
@@ -67,8 +67,8 @@ class TestUpdateZone(unittest.TestCase):
     
     @clean_db
     @alias_test_db
+    @insert_grid
     def testShowZones(self):
-        update_zone("Grid City, California", "Foo, Bar", centerlines=self.grid)
         show_zones()
 
 

@@ -16,42 +16,38 @@ import pytest
 import rubbish
 from rubbish.common.db_ops import reset_db, db_sessionmaker
 from rubbish.common.orm import Pickup, BlockfaceStatistic
-from rubbish.common.test_utils import get_db, clean_db, alias_test_db
+from rubbish.common.test_utils import get_db, clean_db, alias_test_db, insert_grid
 from rubbish.common.consts import RUBBISH_TYPES
 from rubbish.client.ops import write_pickups, run_get, coord_get
 from rubbish.admin.ops import update_zone
 
 def valid_pickups_from_geoms(geoms, firebase_run_id='foo', curb=None):
     return [{
-        'firebase_id': str(hash(i)).lstrip("-"),
+        'firebase_id': str(abs(hash(i))),
         'firebase_run_id': firebase_run_id,
         'type': random.choice(RUBBISH_TYPES),
         'timestamp': str(datetime.now().replace(tzinfo=timezone.utc).timestamp()),
         'curb': random.choice(['left', 'right']) if curb is None else curb,
-        'geometry': str(geom)  # as WKT
+        'geometry': geom
     } for i, geom in enumerate(geoms)]
 
 class TestWritePickups(unittest.TestCase):
     def setUp(self):
         with patch('rubbish.common.db_ops.get_db', new=get_db):
             self.session = db_sessionmaker()()
-        self.grid = gpd.read_file(
-            os.path.dirname(os.path.realpath(__file__)) + "/fixtures/grid.geojson"
-        )
 
     @clean_db
     @alias_test_db
+    @insert_grid
     def testWriteZeroPickups(self):
-        update_zone("Grid City, California", "Grid City, California", centerlines=self.grid)
         write_pickups(gpd.GeoDataFrame({}))
         pickups = self.session.query(Pickup).all()
         assert len(pickups) == 0
 
     @clean_db
     @alias_test_db
+    @insert_grid
     def testWritePickupsOnSegment(self):
-        update_zone("Grid City, California", "Grid City, California", centerlines=self.grid)
-
         # Pickups with no missing values on a segment.
         input = valid_pickups_from_geoms([Point(0.1, 0), Point(0.9, 0)], curb='left')
         write_pickups(input)
@@ -67,9 +63,8 @@ class TestWritePickups(unittest.TestCase):
 
     @clean_db
     @alias_test_db
+    @insert_grid
     def testWritePickupsNearSegment(self):
-        update_zone("Grid City, California", "Grid City, California", centerlines=self.grid)
-
         # Pickups with no missing values on a segment.
         input = valid_pickups_from_geoms([Point(0.1, 0.0001), Point(0.9, 0.0001)], curb='left')
         write_pickups(input)
@@ -85,9 +80,8 @@ class TestWritePickups(unittest.TestCase):
 
     @clean_db
     @alias_test_db
+    @insert_grid
     def testWritePickupsNearSegmentBothSides(self):
-        update_zone("Grid City, California", "Grid City, California", centerlines=self.grid)
-
         # Pickups with no missing values on a segment.
         input = (
             valid_pickups_from_geoms([Point(0.1, 0.0001), Point(0.9, 0.0001)], curb='left') +
@@ -107,9 +101,8 @@ class TestWritePickups(unittest.TestCase):
 
     @clean_db
     @alias_test_db
+    @insert_grid
     def testWritePickupsIncompleteRun(self):
-        update_zone("Grid City, California", "Grid City, California", centerlines=self.grid)
-
         input = valid_pickups_from_geoms([Point(0.4, 0.0001), Point(0.6, 0.0001)], curb='left')
         write_pickups(input)
 
@@ -118,9 +111,8 @@ class TestWritePickups(unittest.TestCase):
 
     @clean_db
     @alias_test_db
+    @insert_grid
     def testWritePickupsWithPriorRun(self):
-        update_zone("Grid City, California", "Grid City, California", centerlines=self.grid)
-
         input = valid_pickups_from_geoms([Point(0.1, 0.0001), Point(0.9, 0.0001)], curb='left')
         write_pickups(input)
         input = valid_pickups_from_geoms(
@@ -140,15 +132,11 @@ class TestRunGet(unittest.TestCase):
     def setUp(self):
         with patch('rubbish.common.db_ops.get_db', new=get_db):
             self.session = db_sessionmaker()()
-        self.grid = gpd.read_file(
-            os.path.dirname(os.path.realpath(__file__)) + "/fixtures/grid.geojson"
-        )
 
     @clean_db
     @alias_test_db
+    @insert_grid
     def testRunGet(self):
-        update_zone("Grid City, California", "Grid City, California", centerlines=self.grid)
-
         with pytest.raises(ValueError):
             run_get("BAD_HASH")
 
@@ -189,15 +177,11 @@ class TestCoordGet(unittest.TestCase):
     def setUp(self):
         with patch('rubbish.common.db_ops.get_db', new=get_db):
             self.session = db_sessionmaker()()
-        self.grid = gpd.read_file(
-            os.path.dirname(os.path.realpath(__file__)) + "/fixtures/grid.geojson"
-        )
 
     @clean_db
     @alias_test_db
+    @insert_grid
     def testCoordGetIncludeNA(self):
-        update_zone("Grid City, California", "Grid City, California", centerlines=self.grid)
-
         # case 1: no statistics so stats is empty
         result = coord_get((0.1, 0.0001), include_na=True)
         assert set(result.keys()) == {'centerline', 'stats'}

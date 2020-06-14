@@ -45,6 +45,15 @@ def reset_db():
     Resets the current database, deleting all data.
     """
     session = db_sessionmaker()()
+
+    engine = session.bind
+    engine.execute('ALTER SEQUENCE zones_id_seq RESTART WITH 1;')
+    engine.execute('ALTER SEQUENCE zone_generations_id_seq RESTART WITH 1;')
+    engine.execute('ALTER SEQUENCE blockface_statistics_id_seq RESTART WITH 1;')
+    engine.execute('ALTER SEQUENCE pickups_id_seq RESTART WITH 1;')
+    engine.execute('ALTER SEQUENCE sectors_id_seq RESTART WITH 1;')
+    engine.execute('ALTER SEQUENCE centerlines_id_seq RESTART WITH 1;')
+
     try:
         session.query(Pickup).delete()
         session.query(BlockfaceStatistic).delete()
