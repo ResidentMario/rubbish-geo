@@ -1,10 +1,9 @@
 """
 Admin methods for interacting with zones.
 """
-
 import os
-import json
 from datetime import datetime
+import warnings
 
 import osmnx as ox
 import geopandas as gpd
@@ -127,11 +126,9 @@ def update_zone(osmnx_name, name, centerlines=None):
 
     try:
         session.commit()
-        # TODO: if the session (which writes zone and zone_generation information) clears, but the
-        # centerlines write (which geopandas executes in its own separate transaction, but which
-        # depends on the success of the first transaction due to foreign key constrains) fails,
-        # this will technically result in inconsistent state. For now I'm ignoring this problem.
-        centerlines.to_postgis("centerlines", conn, if_exists="append")
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            centerlines.to_postgis("centerlines", conn, if_exists="append")
     except:
         session.rollback()
         raise

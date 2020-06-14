@@ -22,9 +22,6 @@ class TestUpdateZone(unittest.TestCase):
     def setUp(self):
         with patch('rubbish.common.db_ops.get_db', new=get_db):
             self.session = db_sessionmaker()()
-        self.grid = gpd.read_file(
-            os.path.dirname(os.path.realpath(__file__)) + "/fixtures/grid.geojson"
-        )
 
     @clean_db
     @alias_test_db
