@@ -271,6 +271,7 @@ def write_pickups(pickups, check_distance=True):
             # TODO: curb matching logic goes here
             if pickup['curb'] is None:
                 raise NotImplementedError
+                # pickup['curb'] = point_side_of_centerline(pickup_geom, centerline_geom)
 
             linear_reference = centerline_geom.project(pickup_geom, normalized=True)
             snapped_pickup_geom = centerline_geom.interpolate(linear_reference, normalized=True)
@@ -286,8 +287,7 @@ def write_pickups(pickups, check_distance=True):
                 linear_reference=linear_reference,
                 curb=0 if pickup['curb'] == 'left' else 1
             )
-            # TODO: readd the session but with curb logic later on in the code
-            # session.add(pickup_obj)
+            session.add(pickup_obj)
 
             blockface_id_tup = (centerline_obj, pickup_obj.curb)
             if blockface_id_tup not in blockface_pickups:
