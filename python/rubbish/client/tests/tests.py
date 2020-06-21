@@ -18,7 +18,7 @@ from rubbish.common.db_ops import reset_db, db_sessionmaker
 from rubbish.common.orm import Pickup, BlockfaceStatistic
 from rubbish.common.test_utils import get_db, clean_db, alias_test_db, insert_grid
 from rubbish.common.consts import RUBBISH_TYPES
-from rubbish.client.ops import write_pickups, run_get, coord_get
+from rubbish.client.ops import write_pickups, run_get, coord_get, nearest_centerline_to_point
 from rubbish.admin.ops import update_zone
 
 def valid_pickups_from_geoms(geoms, firebase_run_id='foo', curb=None):
@@ -104,10 +104,8 @@ class TestWritePickups(unittest.TestCase):
     @insert_grid
     def testWritePickupsIncompleteRun(self):
         input = valid_pickups_from_geoms([Point(0.4, 0.0001), Point(0.6, 0.0001)], curb='left')
-        write_pickups(input)
-
-        blockface_statistics = self.session.query(BlockfaceStatistic).all()
-        assert len(blockface_statistics) == 0
+        with pytest.raises(ValueError):
+            write_pickups(input)
 
     @clean_db
     @alias_test_db
@@ -124,9 +122,151 @@ class TestWritePickups(unittest.TestCase):
         blockface_statistics = self.session.query(BlockfaceStatistic).all()
         assert len(blockface_statistics) == 1
 
+    @clean_db
+    @alias_test_db
+    @insert_grid
+    def testWritePickupsInputValidation(self):
+        input = valid_pickups_from_geoms([Point(0.1, 0.0001), Point(0.9, 0.0001)], curb='left')
+        input[0]['geometry'] = LineString([(0, 0), (1, 1)])
+        with pytest.raises(ValueError):
+            write_pickups(input)
+
+        input = valid_pickups_from_geoms([Point(0.1, 0.0001), Point(0.9, 0.0001)], curb='left')
+        input[0]['curb'] = 'INVALID'
+        with pytest.raises(ValueError):
+            write_pickups(input)
+
+        input = valid_pickups_from_geoms([Point(0.1, 0.0001), Point(0.9, 0.0001)], curb='left')
+        input[0]['timestamp'] = 10**10
+        with pytest.raises(ValueError):
+            write_pickups(input)
+
+        input = valid_pickups_from_geoms([Point(0.1, 0.0001), Point(0.9, 0.0001)], curb='left')
+        input[0]['type'] = 'INVALID'
+        with pytest.raises(ValueError):
+            write_pickups(input)
+
+    @clean_db
+    @alias_test_db
+    @insert_grid
+    def testWritePickupsDealWithScatter(self):
+        # GH#5 case 4
+        # Run on a single centerline with points scattering near adjacent centerlines. Expected
+        # behavior is that the scattered points (located out of position due to GPS inaccuracy)
+        # will get consolidated onto the target centerline.
+        geoms = [Point(0.1, 0), Point(0.9, 0), Point(0, 0.1), Point(1, 0.1)]
+        input = valid_pickups_from_geoms(geoms, curb='left')
+        write_pickups(input, check_distance=True)
+        blockface_statistics = self.session.query(BlockfaceStatistic).all()
+        assert len(blockface_statistics) == 1
+
+    @clean_db
+    @alias_test_db
+    @insert_grid
+    def testWritePickupsDealWithHeavyScatter(self):
+        # GH#5 case 4
+        # In this case there is a point that is reported that is very far away. Robustnes check.
+        geoms = [Point(0.1, 0), Point(0.9, 0), Point(2, 2)]
+        input = valid_pickups_from_geoms(geoms, curb='left')
+        write_pickups(input, check_distance=True)
+        blockface_statistics = self.session.query(BlockfaceStatistic).all()
+        assert len(blockface_statistics) == 1
+
+    # @clean_db
+    # @alias_test_db
+    # @insert_grid
+    # def testWritePickupsInferMissingCenterline(self):
+    #     # GH#5 case 1
+    #     # Run consisting of a three centerlines, the first and last with pickups, the middle
+    #     # without. The fact that were no pickups on the connecting centerline is meaningful.
+    #     geoms = [Point(0.1, 0), Point(0.9, 0), Point(2, 0.1), Point(2, 0.9)]
+    #     input = valid_pickups_from_geoms(geoms, curb='left')
+    #     write_pickups(input)
+    #     blockface_statistics = self.session.query(BlockfaceStatistic).all()
+    #     assert len(blockface_statistics) == 3
+
+    # @clean_db
+    # @alias_test_db
+    # @insert_grid
+    # def testWritePickupsDecapBoth(self):
+    #     # GH#5 case 2
+    #     # The first and last centerlines do not have enough coverage to register.
+    #     geoms = [Point(0.4, 0), Point(0.6, 0), Point(0.9, 0), Point(1, 0.4)]
+    #     input = valid_pickups_from_geoms(geoms, curb='left')
+    #     write_pickups(input)
+    #     blockface_statistics = self.session.query(BlockfaceStatistic).all()
+    #     assert len(blockface_statistics) == 1
+
+    # @clean_db
+    # @alias_test_db
+    # @insert_grid
+    # def testWritePickupsDecapLastOnly(self):
+    #     # GH#5 case 2
+    #     # Only the middle and last centerline had not enough information.
+    #     geoms = [Point(0.6, 0), Point(0.6, 0), Point(0.9, 0), Point(1, 0.9)]
+    #     input = valid_pickups_from_geoms(geoms, curb='left')
+    #     write_pickups(input)
+    #     blockface_statistics = self.session.query(BlockfaceStatistic).all()
+    #     assert len(blockface_statistics) == 2
+
+    # @clean_db
+    # @alias_test_db
+    # @insert_grid
+    # def testWritePickupsDecapFirstOnly(self):
+    #     # GH#5 case 2
+    #     # Only the middle and first centerline had not enough information.
+    #     geoms = [Point(0.1, 0), Point(0.6, 0), Point(0.9, 0), Point(1, 0.4)]
+    #     input = valid_pickups_from_geoms(geoms, curb='left')
+    #     write_pickups(input)
+    #     blockface_statistics = self.session.query(BlockfaceStatistic).all()
+    #     assert len(blockface_statistics) == 2
+
 # TODO: more comprehensive write pickups tests to test the point assignment logic
 # TODO: test blockface logic, including distance calculations
-# TODO: move away from using the grid.json fixture, define that as a function instead.
+
+class TestNearestCenterlineToPoint(unittest.TestCase):
+    def setUp(self):
+        with patch('rubbish.common.db_ops.get_db', new=get_db):
+            self.session = db_sessionmaker()()
+
+    @clean_db
+    @alias_test_db
+    def testEmpty(self):
+        with pytest.raises(ValueError):
+            nearest_centerline_to_point(Point(0, 0), self.session, rank=0)
+
+    @clean_db
+    @alias_test_db
+    @insert_grid
+    def testRankOverCutoff(self):
+        with pytest.raises(ValueError):
+            nearest_centerline_to_point(Point(0, 0), self.session, rank=1000)
+
+    @clean_db
+    @alias_test_db
+    @insert_grid
+    def testRankTooHigh(self):
+        # raises because there are only 12 centerlines in the database
+        with pytest.raises(ValueError):
+            nearest_centerline_to_point(Point(0, 0), self.session, rank=13)
+
+    @clean_db
+    @alias_test_db
+    @insert_grid
+    def testFirstResult(self):
+        centerline = nearest_centerline_to_point(
+            Point(0, 0.5), self.session, rank=0, check_distance=True
+        )
+        assert centerline.name == "0_0_0_1 Street"
+
+    @clean_db
+    @alias_test_db
+    @insert_grid
+    def testSecondResult(self):
+        centerline = nearest_centerline_to_point(
+            Point(0.1, 0.4), self.session, rank=1, check_distance=True
+        )
+        assert centerline.name == "0_0_1_0 Street"
 
 class TestRunGet(unittest.TestCase):
     def setUp(self):
@@ -140,15 +280,7 @@ class TestRunGet(unittest.TestCase):
         with pytest.raises(ValueError):
             run_get("BAD_HASH")
 
-        # case 1: left run inserted, but it doesn't pass validation rules so it doesn't count
-        input = valid_pickups_from_geoms(
-            [Point(0.4, 0.0001), Point(0.6, 0.0001)], firebase_run_id='foo', curb='left'
-        )
-        write_pickups(input)
-        result = run_get('foo')
-        assert len(result) == 0
-
-        # case 2: left run inserted only
+        # case 1: left run inserted only
         input = valid_pickups_from_geoms(
             [Point(0.1, 0.0001), Point(0.9, 0.0001)], firebase_run_id='foo', curb='left'
         )
@@ -161,7 +293,7 @@ class TestRunGet(unittest.TestCase):
         assert len(result) == 1
         assert set(result[0].keys()) == expected_keys
 
-        # case 3: left and right runs inserted, query is for right side so only right is returned
+        # case 2: left and right runs inserted, query is for right side so only right is returned
         input = valid_pickups_from_geoms(
             [Point(0.1, -0.0001), Point(0.9, -0.0001)], firebase_run_id='bar', curb='right'
         )
