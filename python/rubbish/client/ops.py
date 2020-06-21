@@ -16,43 +16,56 @@ from rubbish.common.db_ops import db_sessionmaker
 from rubbish.common.orm import Pickup, Centerline, BlockfaceStatistic
 from rubbish.common.consts import RUBBISH_TYPES, RUBBISH_TYPE_MAP
 
-# TODO: refactor write_pickups so I can clean up this method's crazy output signature.
-def _snap_point(orig_point, session):
-    orig_point_wkt = f"SRID=4326;{str(orig_point)}"
+def _nearest_centerline_to_point(point_geom, session):
+    """
+    Returns the nearest database
+    """
+    point_geom_wkt = f"SRID=4326;{str(point_geom)}"
     matches = (session
         .query(Centerline)
-        .order_by(Centerline.geometry.distance_centroid(orig_point_wkt))
+        .order_by(Centerline.geometry.distance_centroid(point_geom_wkt))
         .limit(100)
         .all()
     )
     if len(matches) == 0:
         raise ValueError("No centerlines in the database!")
-    match, match_geom_wkt, dist = (session
+    match, dist = (session
         .query(
             Centerline,
-            geoalchemy2.functions.ST_AsText(Centerline.geometry),
-            geoalchemy2.functions.ST_Distance(Centerline.geometry, orig_point_wkt)
+            geoalchemy2.functions.ST_Distance(Centerline.geometry, point_geom_wkt)
         )
-        .order_by(Centerline.geometry.ST_Distance(orig_point_wkt))
+        .order_by(Centerline.geometry.ST_Distance(point_geom_wkt))
         .first()
     )
-    # unrectified coordinate values so these are approximate
+    # unrectified coordinate values so these distance are approximate
     if dist > 0.0009:
         warnings.warn(
-            f"Matching pickup {orig_point_wkt} to centerline {str(match.geometry)} "
-            f"located >100m (but <1km) away. This indicates potential data problems."
+            f"Matching point {point_geom_wkt} to centerline {str(match.geometry)} "
+            f"located >~100m (but <~1km) away. This indicates potential data problems."
         )
     if dist > 0.001:
         warnings.warn(
-            f"{orig_point_wkt} is >1km from nearest centerline and was discarded."
+            f"{point_geom_wkt} is >~1km from nearest centerline and was discarded."
         )
-    
-    match_geom = shapely.wkt.loads(match_geom_wkt)
-    linear_reference = match_geom.project(orig_point, normalized=True)
-    snapped_point = match_geom.interpolate(linear_reference, normalized=True)
-    return match, match_geom, snapped_point, linear_reference
+    return match
 
-def _munge_pickups(pickups):
+def write_pickups(pickups):
+    """
+    Writes pickups to the database. Pickups is expected to be a list of entries in the format:
+
+    ```
+    {"firebase_id": <int>,
+     "type": <int, see key in docs>,
+     "timestamp": <int; UTC UNIX timestamp>,
+     "curb": <{left, right, None}; user statement of side of the street>,
+     "geometry": <str; POINT in WKT format>}
+    ```
+
+    All other keys included in the dict will be silently ignored.
+
+    This list is to correspond with a single rubbish run, with items sequenced in the order in
+    which the pickups were made.
+    """
     if len(pickups) == 0:
         return
 
@@ -76,12 +89,9 @@ def _munge_pickups(pickups):
         pickup["geometry"] = geom
         for int_attr in ["firebase_id", "timestamp"]:
             try:
-                v = int(float(pickup[int_attr]))
-                pickup[int_attr] = v
+                pickup[int_attr] = int(float(pickup[int_attr]))
             except ValueError:
-                raise ValueError(
-                    f"Found pickup with {int_attr} of non-castable type {type(v)}."
-                )
+                raise ValueError(f"Found pickup with {int_attr} of non-castable type.")
         # the five minutes of padding are just in case there is clock skew
         if pickup["timestamp"] > (datetime.utcnow() + timedelta(minutes=5)).timestamp():
             raise ValueError(
@@ -105,7 +115,11 @@ def _munge_pickups(pickups):
     centerline_objs, pickup_objs = dict(), dict()
     for pickup in pickups:
         orig_point = pickup["geometry"]
-        match, match_geom, snapped_point, linear_reference = _snap_point(orig_point, session)
+
+        centerline = _nearest_centerline_to_point(orig_point, session)
+        centerline_geom = to_shape(centerline.geometry)
+        linear_reference = centerline_geom.project(orig_point, normalized=True)
+        snapped_point_geom = centerline_geom.interpolate(linear_reference, normalized=True)
 
         # For now, no curb means left curb. See the to-do item below this code block.
         if pickup['curb'] is None:
@@ -113,8 +127,8 @@ def _munge_pickups(pickups):
 
         pickup_obj = Pickup(
             geometry=f'SRID=4326;{str(orig_point)}',
-            snapped_geometry=f'SRID=4326;{str(snapped_point)}',
-            centerline_id=match.id,
+            snapped_geometry=f'SRID=4326;{str(snapped_point_geom)}',
+            centerline_id=centerline.id,
             firebase_id=pickup['firebase_id'],
             firebase_run_id=pickup['firebase_run_id'],
             type=pickup['type'],
@@ -123,13 +137,13 @@ def _munge_pickups(pickups):
             curb=0 if pickup['curb'] == 'left' else 1
         )
 
-        if match.id not in centerline_objs:
-            centerline_objs[match.id] = (match, match_geom)
-        if match.id in pickup_objs:
-            pickup_objs[match.id][pickup['curb']].append(pickup_obj)
+        if centerline.id not in centerline_objs:
+            centerline_objs[centerline.id] = (centerline, centerline_geom)
+        if centerline.id in pickup_objs:
+            pickup_objs[centerline.id][pickup['curb']].append(pickup_obj)
         else:
-            pickup_objs[match.id] = {'left': [], 'right': []}
-            pickup_objs[match.id][pickup['curb']].append(pickup_obj)
+            pickup_objs[centerline.id] = {'left': [], 'right': []}
+            pickup_objs[centerline.id][pickup['curb']].append(pickup_obj)
         session.add(pickup_obj)
 
     # percentile calculation logic
@@ -192,25 +206,6 @@ def _munge_pickups(pickups):
         raise
     finally:
         session.close()
-
-def write_pickups(pickups):
-    """
-    Writes pickups to the database. Pickups is expected to be a list of entries in the format:
-
-    ```
-    {"firebase_id": <int>,
-     "type": <int, see key in docs>,
-     "timestamp": <int; UTC UNIX timestamp>,
-     "curb": <{left, right}; user indication of what side of the street the pickup occurred on>,
-     "geometry": <str; POINT in WKT format>}
-    ```
-
-    All other keys included in the dict will be silently ignored.
-
-    This list is to correspond with a single rubbish run, with items sequenced in the order in
-    which the pickups were made.
-    """
-    return _munge_pickups(pickups)
 
 def _bf_statistic_to_dict(stat):
     # WKBElement -> shapely.geometry.LineString -> dict -> JSONified dict
@@ -345,16 +340,16 @@ def coord_get(coord, include_na=False):
     """
     session = db_sessionmaker()()
     coord = shapely.geometry.Point(*coord)
-    match, _, _, _ = _snap_point(coord, session)
+    centerline = _nearest_centerline_to_point(coord, session)
 
     if include_na == True:
         stats = (session
             .query(BlockfaceStatistic)
-            .filter(BlockfaceStatistic.centerline_id == match.id)
+            .filter(BlockfaceStatistic.centerline_id == centerline.id)
             .all()
         )
         stats_out = list(map(_bf_statistic_to_dict, stats))
-        return {"centerline": _centerline_to_dict(match), "stats": stats_out}
+        return {"centerline": _centerline_to_dict(centerline), "stats": stats_out}
     else:
         raise NotImplementedError
 
