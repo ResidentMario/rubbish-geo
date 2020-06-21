@@ -75,6 +75,7 @@ def update_zone(osmnx_name, name, centerlines=None):
     # insert centerlines
     if centerlines is None:
         G = ox.graph_from_place(osmnx_name, network_type="drive")
+        G = ox.simplify_graph(G)
         _, edges = ox.graph_to_gdfs(G)
 
         # Centerline names entries may be NaN, a str name, or a list[str] of names. AFAIK there
