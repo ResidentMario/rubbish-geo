@@ -8,13 +8,54 @@ import json
 
 import sqlalchemy as sa
 import shapely
-from shapely.geometry import Point
+from shapely.geometry import Point, LineString
 import geoalchemy2
 from geoalchemy2.shape import to_shape
 
 from rubbish.common.db_ops import db_sessionmaker
 from rubbish.common.orm import Pickup, Centerline, BlockfaceStatistic
 from rubbish.common.consts import RUBBISH_TYPES, RUBBISH_TYPE_MAP
+
+def point_side_of_centerline(point_geom, centerline_geom):
+    """
+    Which side of a centerline a point lies on.
+
+    Parameters
+    ----------
+    point_geom: ``shapely.geometry.Point``
+        Point geometry.
+    centerline_geom: ``shapely.geometry.LineString``
+        Centerline geometry.
+    
+    Returns
+    -------
+    0 if point is leftward or on the line exactly, 1 if rightward.
+    """
+    # To determine centerline cardinality, ignore the winding direction of the linestring
+    # and use the following rule.
+    #
+    # Starting point is southernmost endpoint. If the endpoints are tied, starting point is the
+    # southwesternmost endpoint.
+    #
+    # Ending point is the northernmost endpoint. If the endpoints are tied, ending point is the
+    # northeasternmost endpoint.
+    #
+    # Note: shapely encodes points in (x, y) format.
+    start, stop = centerline_geom.coords[0], centerline_geom.coords[-1]
+    if start[1] > stop[1]:
+        centerline_geom = LineString(centerline_geom.coords[::-1])
+    elif start[1] == stop[1]:
+        if start[0] > stop[0]:
+            centerline_geom = LineString(centerline_geom.coords[::-1])
+    
+    lr = centerline_geom.project(point_geom, normalized=True)  # linear reference
+    linear_approx_start, linear_approx_stop = lr - 0.01, lr + 0.01
+    start_geom = centerline_geom.interpolate(linear_approx_start, normalized=True)
+    stop_geom = centerline_geom.interpolate(linear_approx_stop, normalized=True)
+    x_start, y_start, x_stop, y_stop = start_geom.x, start_geom.y, stop_geom.x, stop_geom.y
+    p_x, p_y = point_geom.x, point_geom.y
+    d = (p_x - x_start) * (y_stop - y_start) - (p_y - y_start) * (x_stop - x_start)
+    return 0 if d <= 0 else 1
 
 def nearest_centerline_to_point(point_geom, session, rank=0, check_distance=False):
     """
@@ -216,7 +257,6 @@ def write_pickups(pickups, check_distance=True):
 
     # `centerlines` is a map with `centerline_id` keys and 
     # (centerline_obj, (min_lr, max_lr), [...pickups]) values.
-    # TODO: infer connecting centerlines logic goes here.
     
     # Construct a key-value map with blockface identifier keys and pickup_obj values. We will pass
     # over this map in the next step to construct blockface statistics.
@@ -231,6 +271,7 @@ def write_pickups(pickups, check_distance=True):
             # TODO: curb matching logic goes here
             if pickup['curb'] is None:
                 raise NotImplementedError
+                # pickup['curb'] = point_side_of_centerline(pickup_geom, centerline_geom)
 
             linear_reference = centerline_geom.project(pickup_geom, normalized=True)
             snapped_pickup_geom = centerline_geom.interpolate(linear_reference, normalized=True)

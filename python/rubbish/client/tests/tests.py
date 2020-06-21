@@ -18,7 +18,9 @@ from rubbish.common.db_ops import reset_db, db_sessionmaker
 from rubbish.common.orm import Pickup, BlockfaceStatistic
 from rubbish.common.test_utils import get_db, clean_db, alias_test_db, insert_grid
 from rubbish.common.consts import RUBBISH_TYPES
-from rubbish.client.ops import write_pickups, run_get, coord_get, nearest_centerline_to_point
+from rubbish.client.ops import (
+    write_pickups, run_get, coord_get, nearest_centerline_to_point, point_side_of_centerline
+)
 from rubbish.admin.ops import update_zone
 
 def valid_pickups_from_geoms(geoms, firebase_run_id='foo', curb=None):
@@ -172,6 +174,7 @@ class TestWritePickups(unittest.TestCase):
         blockface_statistics = self.session.query(BlockfaceStatistic).all()
         assert len(blockface_statistics) == 1
 
+    # TODO: update and uncomment these tests
     # @clean_db
     # @alias_test_db
     # @insert_grid
@@ -221,8 +224,24 @@ class TestWritePickups(unittest.TestCase):
     #     blockface_statistics = self.session.query(BlockfaceStatistic).all()
     #     assert len(blockface_statistics) == 2
 
-# TODO: more comprehensive write pickups tests to test the point assignment logic
-# TODO: test blockface logic, including distance calculations
+class TestPointSideOfCenterline(unittest.TestCase):
+    def testLeft(self):
+        expected = 0
+        actual = point_side_of_centerline(Point(0, 0), LineString([(1, -1), (1, 1)]))
+        assert expected == actual
+
+    def testRight(self):
+        expected = 1
+        actual = point_side_of_centerline(Point(0, 0), LineString([(-1, -1), (-1, 1)]))
+        assert expected == actual
+
+    def testOn(self):
+        expected = 0
+        actual = point_side_of_centerline(Point(0, 0), LineString([(0, -1), (0, 1)]))
+        assert expected == actual
+
+# TODO: point assignment logic integration tests (use the preexisting run data)
+# TODO: test blockface distance calculation logic
 
 class TestNearestCenterlineToPoint(unittest.TestCase):
     def setUp(self):
