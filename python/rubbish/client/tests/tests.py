@@ -29,7 +29,7 @@ def valid_pickups_from_geoms(geoms, firebase_run_id='foo', curb=None):
         'firebase_run_id': firebase_run_id,
         'type': random.choice(RUBBISH_TYPES),
         'timestamp': str(datetime.now().replace(tzinfo=timezone.utc).timestamp()),
-        'curb': random.choice(['left', 'right']) if curb is None else curb,
+        'curb': curb,
         'geometry': geom
     } for i, geom in enumerate(geoms)]
 
@@ -167,62 +167,56 @@ class TestWritePickups(unittest.TestCase):
     @insert_grid
     def testWritePickupsDealWithHeavyScatter(self):
         # GH#5 case 4
-        # In this case there is a point that is reported that is very far away. Robustnes check.
+        # In this case there is a point that is reported that is very far away. Robustness check.
         geoms = [Point(0.1, 0), Point(0.9, 0), Point(2, 2)]
         input = valid_pickups_from_geoms(geoms, curb='left')
         write_pickups(input, check_distance=True)
         blockface_statistics = self.session.query(BlockfaceStatistic).all()
         assert len(blockface_statistics) == 1
 
-    # TODO: update and uncomment these tests
-    # @clean_db
-    # @alias_test_db
-    # @insert_grid
-    # def testWritePickupsInferMissingCenterline(self):
-    #     # GH#5 case 1
-    #     # Run consisting of a three centerlines, the first and last with pickups, the middle
-    #     # without. The fact that were no pickups on the connecting centerline is meaningful.
-    #     geoms = [Point(0.1, 0), Point(0.9, 0), Point(2, 0.1), Point(2, 0.9)]
-    #     input = valid_pickups_from_geoms(geoms, curb='left')
-    #     write_pickups(input)
-    #     blockface_statistics = self.session.query(BlockfaceStatistic).all()
-    #     assert len(blockface_statistics) == 3
+    @clean_db
+    @alias_test_db
+    @insert_grid
+    def testWritePickupsMissingCurbAllLeftSimple(self):
+        # GH#5 case 5
+        geoms = [Point(0.2, 0.11), Point(0.5, 0.1), Point(0.8, 0.09)]
+        input = valid_pickups_from_geoms(geoms, curb=None)
+        write_pickups(input, check_distance=True)
+        blockface_statistics = self.session.query(BlockfaceStatistic).all()
+        assert len(blockface_statistics) == 1
+        assert blockface_statistics[0].curb == 0
 
-    # @clean_db
-    # @alias_test_db
-    # @insert_grid
-    # def testWritePickupsDecapBoth(self):
-    #     # GH#5 case 2
-    #     # The first and last centerlines do not have enough coverage to register.
-    #     geoms = [Point(0.4, 0), Point(0.6, 0), Point(0.9, 0), Point(1, 0.4)]
-    #     input = valid_pickups_from_geoms(geoms, curb='left')
-    #     write_pickups(input)
-    #     blockface_statistics = self.session.query(BlockfaceStatistic).all()
-    #     assert len(blockface_statistics) == 1
+    @clean_db
+    @alias_test_db
+    @insert_grid
+    def testWritePickupsMissingCurbAllRightSimple(self):
+        # GH#5 case 5
+        geoms = [Point(0.2, -0.11), Point(0.5, -0.1), Point(0.8, -0.09)]
+        input = valid_pickups_from_geoms(geoms, curb=None)
+        write_pickups(input, check_distance=True)
+        blockface_statistics = self.session.query(BlockfaceStatistic).all()
+        assert len(blockface_statistics) == 1
+        assert blockface_statistics[0].curb == 1
 
+    # Crafting a simple test case that triggers this logic is proving troublesome!
     # @clean_db
     # @alias_test_db
     # @insert_grid
-    # def testWritePickupsDecapLastOnly(self):
-    #     # GH#5 case 2
-    #     # Only the middle and last centerline had not enough information.
-    #     geoms = [Point(0.6, 0), Point(0.6, 0), Point(0.9, 0), Point(1, 0.9)]
-    #     input = valid_pickups_from_geoms(geoms, curb='left')
-    #     write_pickups(input)
+    # def testWritePickupsMissingCurbBothSidesSimple(self):
+    #     # GH#5 case 5
+    #     geoms = [
+    #         Point(0.2, -0.1), Point(0.2, -0.1), Point(0.2, -0.1), Point(0.2, -0.1),
+    #         Point(0.8, -0.1), Point(0.8, -0.1), Point(0.8, -0.1), Point(0.8, -0.1),
+    #         Point(0.2, 0.1), Point(0.2, 0.1), Point(0.2, 0.1), Point(0.2, 0.1),
+    #         Point(0.8, 0.1), Point(0.8, 0.1), Point(0.8, 0.1), Point(0.8, 0.1),
+    #     ]
+    #     input = valid_pickups_from_geoms(geoms, curb=None)
+    #     write_pickups(input, check_distance=True)
     #     blockface_statistics = self.session.query(BlockfaceStatistic).all()
+    #     import pdb; pdb.set_trace()
     #     assert len(blockface_statistics) == 2
 
-    # @clean_db
-    # @alias_test_db
-    # @insert_grid
-    # def testWritePickupsDecapFirstOnly(self):
-    #     # GH#5 case 2
-    #     # Only the middle and first centerline had not enough information.
-    #     geoms = [Point(0.1, 0), Point(0.6, 0), Point(0.9, 0), Point(1, 0.4)]
-    #     input = valid_pickups_from_geoms(geoms, curb='left')
-    #     write_pickups(input)
-    #     blockface_statistics = self.session.query(BlockfaceStatistic).all()
-    #     assert len(blockface_statistics) == 2
+    # TODO: test curb imputation behavior using sample points drawn from gaussian distriutions
 
 class TestPointSideOfCenterline(unittest.TestCase):
     def testLeft(self):

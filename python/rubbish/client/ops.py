@@ -3,7 +3,7 @@ Python client library I/O methods.
 """
 import warnings
 from datetime import datetime, timedelta
-from collections import defaultdict
+from collections import defaultdict, Counter
 import json
 
 import sqlalchemy as sa
@@ -11,6 +11,7 @@ import shapely
 from shapely.geometry import Point, LineString
 import geoalchemy2
 from geoalchemy2.shape import to_shape
+from scipy.stats import shapiro
 
 from rubbish.common.db_ops import db_sessionmaker
 from rubbish.common.orm import Pickup, Centerline, BlockfaceStatistic
@@ -258,6 +259,76 @@ def write_pickups(pickups, check_distance=True):
     # `centerlines` is a map with `centerline_id` keys and 
     # (centerline_obj, (min_lr, max_lr), [...pickups]) values.
     
+    # This code block handles inference of side-of-street for point distributions with
+    # incomplete curb data.
+    #
+    # If every point assigned to a centerline has a curb set, we assume the user is following
+    # procedure and faithfully indicating what side of the street the pickup occurred on, and
+    # we do not modify any of the values.
+    #
+    # If any point fails this condition, we assume the user forgot or neglected to set this
+    # flag for at least some of the pickups. In this case we use a statistical test.    
+    # 
+    # Determine whether the distribution is unimodal (pickups on one side of the street) or
+    # bimodal (pickups on both sides). We expect a normal distribution on the centerline
+    # (ignoring street width displacement!) with 2σ=~±8 meters (estimated GPS inacurracy from
+    # https://bit.ly/3elXK0V). If support of the alternative hypothesis is present with p>0.05
+    # we assume both sides were run and assign each side points.
+    #
+    # The actual normality test statistic used is the Shapiro-Wilk Test. For more information:
+    # https://machinelearningmastery.com/a-gentle-introduction-to-normality-tests-in-python/.
+    #
+    # This worked relatively well for Polk Street, but Polk Street is very wide and we had a
+    # *lot* of data to work with. With small data volumes, narrow streets, and relatively
+    # heterogenous side-of-street rubbish distributions, this gets very hand-wavey. For this
+    # reason it's *super important* to encourage the user to set side-of-street themselves.
+    centerlines_needing_curb_inference = set()
+    for c_id in centerlines:
+        for pickup in centerlines[c_id][2]:
+            if pickup['curb'] is None:
+                centerlines_needing_curb_inference.add(c_id)
+                break
+    for c_id in centerlines_needing_curb_inference:
+        dists = []
+        sides = []
+        centerline_geom = to_shape(centerlines[c_id][0].geometry)
+        pickups = centerlines[c_id][2]
+
+        # Shapiro requires n>=3 points, so if there are only 1 or 2, just set it to the first
+        # value that appears; there's just not much we can do in this case. ¯\_(ツ)_/¯
+        if len(pickups) < 3:
+            if pickups[0]['curb'] is not None:
+                curb = pickups[0]['curb']
+            elif len(pickups) == 2 and pickups[1]['curb'] is not None:
+                curb = pickups[1]['curb']
+            for pickup in pickups:
+                pickup['curb'] = curb
+            continue
+
+        for pickup in pickups:
+            pickup_geom = pickup['geometry']
+            dists.append(pickup_geom.distance(centerline_geom))
+            sides.append(point_side_of_centerline(pickup_geom, centerline_geom))
+        _, p = shapiro(dists)
+        if p > 0.05:
+            # Gaussian unimodal case. Evidence that points are on one side of the street.
+            # Pick the majority class.
+            c = Counter(sides)
+            curb = 'left' if c[0] > c[1] else 'right'
+            for pickup in pickups:
+                pickup['curb'] = curb
+        else:
+            import pdb; pdb.set_trace()
+            # Non-Gaussian (bimodal) case. Evidence that points are on both sides of the street.
+            # Use the user-set value if it's present, otherwise pick the closest match.
+            for i, pickup in enumerate(pickups):
+                if pickup['curb'] is None:
+                    # TODO: refactor to just use 0/1 everywhere instead of 'left'/'right'
+                    side_str = 'left' if sides[i] == 0 else 'right'
+                    pickup['curb'] = sides[i]
+
+    # From this point on, assume all curbs are set.
+
     # Construct a key-value map with blockface identifier keys and pickup_obj values. We will pass
     # over this map in the next step to construct blockface statistics.
     blockface_pickups = dict()
@@ -265,13 +336,10 @@ def write_pickups(pickups, check_distance=True):
     for c_id in centerlines:
         centerline_obj = centerlines[c_id][0]
         centerline_geom = to_shape(centerline_obj.geometry)
+        pickups = centerlines[c_id][2]
 
-        for pickup in centerlines[c_id][2]:
+        for pickup in pickups:
             pickup_geom = pickup['geometry']
-            # TODO: curb matching logic goes here
-            if pickup['curb'] is None:
-                raise NotImplementedError
-                # pickup['curb'] = point_side_of_centerline(pickup_geom, centerline_geom)
 
             linear_reference = centerline_geom.project(pickup_geom, normalized=True)
             snapped_pickup_geom = centerline_geom.interpolate(linear_reference, normalized=True)
@@ -304,8 +372,6 @@ def write_pickups(pickups, check_distance=True):
                 elif linear_reference > max_lr:
                     max_lr = linear_reference
                 blockface_lrs[blockface_id_tup] = (min_lr, max_lr)
-
-    # From this point on, assume all curbs are set.
 
     # Insert blockface statistics into the database (or update existing ones).
     for blockface_id_tup in blockface_pickups:
