@@ -6,7 +6,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         'sqlalchemy', 'psycopg2', 'alembic', 'geoalchemy2', 'click', 'osmnx', 'geopandas', 'geopy',
-        'rich'
+        'rich', 'scipy'
     ],
     extras_require={'develop': ['pylint', 'pytest']},
     entry_points='''
