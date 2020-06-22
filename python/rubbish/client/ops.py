@@ -318,7 +318,6 @@ def write_pickups(pickups, check_distance=True):
             for pickup in pickups:
                 pickup['curb'] = curb
         else:
-            import pdb; pdb.set_trace()
             # Non-Gaussian (bimodal) case. Evidence that points are on both sides of the street.
             # Use the user-set value if it's present, otherwise pick the closest match.
             for i, pickup in enumerate(pickups):
