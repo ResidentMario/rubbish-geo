@@ -7,3 +7,4 @@ test_alembic.ini
 .pytest_cache/
 default.profraw
 fixtures/
+notebooks/

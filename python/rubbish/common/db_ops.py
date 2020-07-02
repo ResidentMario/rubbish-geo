@@ -28,7 +28,7 @@ def get_db():
     if not cfg.exists():
         return None
     with open(APPDIR / "config", "r") as f:
-        return f.read()
+        return f.read().strip()
 
 def db_sessionmaker():
     """

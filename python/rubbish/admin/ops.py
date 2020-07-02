@@ -4,6 +4,7 @@ Admin methods for interacting with zones.
 import os
 from datetime import datetime
 import warnings
+import math
 
 import osmnx as ox
 import geopandas as gpd
@@ -15,6 +16,91 @@ from rich.table import Table
 
 from rubbish.common.db_ops import db_sessionmaker, get_db
 from rubbish.common.orm import Zone, ZoneGeneration, Centerline, Sector
+
+def _get_name_for_centerline_edge(G, u, v):
+    """
+    Returns a nice name for a specific centerline in the given osmnx graph. `u` and `v` are the
+    (networkx) IDs of the centerline endpoints.
+    
+    We format centerline names thusly:
+    * "Unknown" if the centerline has no name.
+    * X b/w Y and Z format for ordinary centerlines linked to other centerlines on both ends.
+      * In the case of multiple intersections, Y and Z are chosen based on length. The longest
+        adjacent centerline is the one which gifts its name.
+    * X off Y for dead-ends.
+    * X for centerlines only connected to other centerlines with the same name.
+    * X for centerlines not connected to any other centerlines at all.
+    
+    Example output: 'Park View Avenue b/w Winsor Avenue and Palm Drive'
+    
+    Note that these names are non-unique, if you need a UID, use the computed ID instead.
+    """
+    def c_len(u, v):
+        return math.sqrt(abs(G.nodes[u]['x'] - G.nodes[v]['x'])**2 +
+                         abs(G.nodes[u]['y'] - G.nodes[v]['y'])**2)
+    def get_name(G, u, v):
+        struct = G[u][v][0]
+        if 'name' not in struct:
+            return "Unknown"
+        
+        n = struct['name']
+        if isinstance(n, str):
+            return n
+        elif isinstance(n, list):
+            return n[0]
+        else:
+            return "Unknown"
+    
+    name = get_name(G, u, v)
+    if name == "Unknown":
+        return "Unknown"
+
+    u_neighbors = list(G[u].keys())
+    v_neighbors = list(G[v].keys())
+
+    # TODO: make sure southern edge is first and northern edge is last, as per
+    # `point_side_of_centerline` rules.
+    
+    u_w_maxlen, u_w_maxlen_idx = 0, None
+    for w_i, w in enumerate(u_neighbors):
+        if get_name(G, u, w) == name:
+            continue
+        u_w_cand_len = c_len(u, w)
+        if u_w_cand_len > u_w_maxlen:
+            u_w_maxlen = c_len(u, w)
+            u_w_maxlen_idx = w_i
+
+    v_w_maxlen, v_w_maxlen_idx = 0, None
+    for w_i, w in enumerate(v_neighbors):
+        if get_name(G, v, w) == name:
+            continue
+        v_w_cand_len = c_len(v, w)
+        if v_w_cand_len > v_w_maxlen:
+            v_w_maxlen = c_len(v, w)
+            v_w_maxlen_idx = w_i
+    
+    # Centerline names entries may be NaN, a str name, or a list[str] of names. AFAIK there
+    # isn't any interesting information in the ordering of names, so we'll use first-wins
+    # rules for list[str]. For NaN names, we'll insert an "Unknown" string.
+    if v_w_maxlen_idx is not None:
+        w = v_neighbors[v_w_maxlen_idx]
+        v_w_name = get_name(G, v, w)
+    else:
+        v_w_name = None
+    if u_w_maxlen_idx is not None:
+        w = u_neighbors[u_w_maxlen_idx]
+        u_w_name = get_name(G, u, w)
+    else:
+        u_w_name = None
+    
+    if u_w_maxlen_idx is None and v_w_maxlen_idx is None:
+        return name
+    elif u_w_maxlen_idx is None:
+        return f"{name} off {v_w_name}"
+    elif v_w_maxlen_idx is None:
+        return f"{name} off {u_w_name}"
+    else:
+        return f"{name} b/w {v_w_name} and {u_w_name}"
 
 def _calculate_linestring_length(linestring):
     length = 0
@@ -74,8 +160,7 @@ def update_zone(osmnx_name, name, centerlines=None):
 
     # insert centerlines
     if centerlines is None:
-        G = ox.graph_from_place(osmnx_name, network_type="drive")
-        G = ox.simplify_graph(G)
+        G = ox.graph_from_place(osmnx_name, simplify=True, network_type="drive")
         _, edges = ox.graph_to_gdfs(G)
 
         # Centerline names entries may be NaN, a str name, or a list[str] of names. AFAIK there
@@ -84,10 +169,12 @@ def update_zone(osmnx_name, name, centerlines=None):
         #
         # Centerline osmid values cannot be NaN, but can map to a list. It's unclear why this
         # is the case.
+        names = []
+        for edge in G.edges:
+            u, v, _ = edge
+            names.append(_get_name_for_centerline_edge(G, u, v))
         edges = edges.assign(
-            name=edges.name.map(
-                lambda n: n if isinstance(n, str) else n[0] if isinstance(n, list) else "Unknown"
-            ),
+            name=names,
             osmid=edges.osmid.map(lambda v: v if isinstance(v, int) else v[0])
         )
         centerlines = gpd.GeoDataFrame(
@@ -235,5 +322,6 @@ def show_sectors():
     table.add_column("Name", justify="left")
     for sector in session.query(Sector).all():
         table.add_row(str(sector.id), sector.name)
+    console.print(table)
 
 __all__ = ['update_zone', 'show_zones', 'insert_sector', 'delete_sector', 'show_sectors']

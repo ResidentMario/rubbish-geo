@@ -44,8 +44,8 @@ def set_db(dbstr):
 
 @click.command(name="reset-db", short_help="Reset the DB.")
 def reset_db():
-    y_n = input("This will delete ALL data currently in the database. Are you sure? [y/n]: ")
-    if y_n == "y" or y_n == "yes":
+    y_n = input("This will delete ALL data currently in the database. Are you sure? [Y/n]: ")
+    if y_n == "y" or y_n == "yes" or y_n == "Y":
         _reset_db()
     elif y_n == "n" or y_n == "no":
         return
