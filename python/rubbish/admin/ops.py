@@ -112,6 +112,11 @@ def _calculate_linestring_length(linestring):
         length += distance(linestring.coords[idx_a][::-1], linestring.coords[idx_b][::-1]).meters
     return length
 
+def _poly_wkb_to_bounds_str(wkb):
+    bounds = to_shape(wkb).bounds
+    bounds = str(tuple(f'{v:.4f}' for v in bounds)).replace("'", "")
+    return bounds
+
 def update_zone(osmnx_name, name, centerlines=None, profile=None):
     """
     Updates a zone, plopping the new centerlines into the database.
@@ -256,8 +261,7 @@ def show_zones(profile=None):
             n_centerlines = (
                 session.query(Centerline).filter(Centerline.id in zone_gen_ids).count()
             )
-            bounds = to_shape(zone.bounding_box).bounds
-            bounds = str(tuple(f'{v:.4f}' for v in bounds)).replace("'", "")
+            bounds = _poly_wkb_to_bounds_str(zone.bounding_box)
             table.add_row(
                 str(zone.id), zone.name, zone.osmnx_name, str(len(zone.zone_generations)),
                 str(n_centerlines), str(bounds)
@@ -336,7 +340,7 @@ def show_sectors(profile=None):
     table.add_column("Name", justify="left")
     table.add_column("Bounding Box", justify="left")
     for sector in session.query(Sector).all():
-        bounds = str(to_shape(sector.geometry).bounds)
+        bounds = _poly_wkb_to_bounds_str(sector.geometry)
         table.add_row(str(sector.id), sector.name, bounds)
     console.print(table)
 
