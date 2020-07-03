@@ -4,9 +4,10 @@ Client tests. Be sure to run scripts/init_test_db.sh first.
 import random
 from datetime import datetime, timezone
 import warnings
+import tempfile
 
 import geopandas as gpd
-from shapely.geometry import Point, LineString
+from shapely.geometry import Point, LineString, Polygon
 
 import unittest
 from unittest.mock import patch
@@ -17,8 +18,10 @@ from rubbish.common.orm import Pickup, BlockfaceStatistic
 from rubbish.common.test_utils import get_db, clean_db, alias_test_db, insert_grid
 from rubbish.common.consts import RUBBISH_TYPES
 from rubbish.client.ops import (
-    write_pickups, run_get, coord_get, nearest_centerline_to_point, point_side_of_centerline
+    write_pickups, run_get, coord_get, nearest_centerline_to_point, point_side_of_centerline,
+    sector_get, radial_get
 )
+from rubbish.admin.ops import insert_sector
 
 def valid_pickups_from_geoms(geoms, firebase_run_id='foo', curb=None):
     return [{
@@ -375,3 +378,70 @@ class TestCoordGet(unittest.TestCase):
             warnings.simplefilter('ignore')
             result = coord_get((1, 1), include_na=False)
         assert result['statistics'][0] is not None and result['statistics'][1] is not None
+
+class TestSectorGet(unittest.TestCase):
+    def setUp(self):
+        with patch('rubbish.common.db_ops.get_db', new=get_db):
+            self.session = db_sessionmaker()()
+
+    @clean_db
+    @alias_test_db
+    @insert_grid
+    def testSectorGetNoSuchSector(self):
+        with pytest.raises(ValueError):
+            sector_get('INVALID')
+
+    @clean_db
+    @alias_test_db
+    @insert_grid
+    def testSectorGet(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # TODO: generalize this across both here and admin/tests.py as a util.
+            poly = Polygon([[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]])
+            filepath = tmpdir.rstrip("/") + "/" + "sector-polygon.geojson"
+            gpd.GeoDataFrame(geometry=[poly]).to_file(filepath, driver="GeoJSON")
+            insert_sector("Polygon Land", filepath)
+        input = valid_pickups_from_geoms(
+            [Point(0.1, 0.0001), Point(0.9, 0.0001)], firebase_run_id='foo', curb='left'
+        )
+        write_pickups(input)
+
+        result = sector_get('Polygon Land', include_na=True)
+        assert len(result) == 8
+
+        result = sector_get('Polygon Land', include_na=False)
+        assert len(result) == 1
+        assert result[0]['statistics'][0] is not None and result[0]['statistics'][1] is None
+
+class TestRadialGet(unittest.TestCase):
+    def setUp(self):
+        with patch('rubbish.common.db_ops.get_db', new=get_db):
+            self.session = db_sessionmaker()()
+
+    @clean_db
+    @alias_test_db
+    @insert_grid
+    def testRadialGetEmpty(self):
+        statistics = radial_get((10, 10), 10)
+        assert len(statistics) == 0
+
+    @clean_db
+    @alias_test_db
+    @insert_grid
+    def testRadialGet(self):
+        input = valid_pickups_from_geoms(
+            [Point(0.1, 0.0001), Point(0.9, 0.0001)], firebase_run_id='foo', curb='left'
+        )
+        write_pickups(input)
+
+        result = radial_get((0, 0), 1, include_na=True)
+        assert len(result) == 2
+
+        result = radial_get((0, 0), 10**6, include_na=True)
+        assert len(result) == 12
+
+        result = radial_get((2, 2), 1, include_na=True)
+        assert len(result) == 2
+
+        result = radial_get((2, 2), 1, include_na=False)
+        assert len(result) == 0

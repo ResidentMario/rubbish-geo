@@ -13,7 +13,7 @@ from geoalchemy2.shape import to_shape
 from scipy.stats import shapiro
 
 from rubbish.common.db_ops import db_sessionmaker
-from rubbish.common.orm import Pickup, Centerline, BlockfaceStatistic
+from rubbish.common.orm import Pickup, Centerline, BlockfaceStatistic, Sector
 from rubbish.common.consts import RUBBISH_TYPES, RUBBISH_TYPE_MAP
 
 def point_side_of_centerline(point_geom, centerline_geom):
@@ -501,7 +501,36 @@ def radial_get(coord, distance, include_na=False, offset=0):
     ``dict``
         Query result.
     """
-    raise NotImplementedError
+    session = db_sessionmaker()()
+    coord = f'SRID=4326;POINT({coord[0]} {coord[1]})'
+    centerlines = (session
+        .query(Centerline)
+        .filter(Centerline.geometry.ST_Distance(coord) < distance)
+        .all()
+    )
+    centerline_ids = set(centerline.id for centerline in centerlines)
+    statistics = (session
+        .query(BlockfaceStatistic)
+        .filter(BlockfaceStatistic.centerline_id.in_(centerline_ids))
+        .all()
+    )
+    response_map = dict()
+    for statistic in statistics:
+        if statistic.centerline_id not in response_map:
+            centerline_dict = centerline_obj_to_dict(statistic.centerline)
+            response_map[statistic.centerline_id] = {
+                'centerline': centerline_dict, 'statistics': {0: None, 1: None}
+            }
+        statistic_dict = blockface_statistic_obj_to_dict(statistic)
+        response_map[statistic.centerline_id]['statistics'][statistic.curb] = statistic_dict
+    if include_na:
+        for centerline in centerlines:
+            if centerline.id not in response_map:
+                response_map[centerline.id] = {
+                    'centerline': centerline_obj_to_dict(centerline),
+                    'statistics': {0: None, 1: None}
+                }
+    return [response_map[centerline_id] for centerline_id in response_map]
 
 def sector_get(sector_name, include_na=False, offset=0):
     """
@@ -535,7 +564,43 @@ def sector_get(sector_name, include_na=False, offset=0):
     ``dict``
         Query result.
     """
-    raise NotImplementedError
+    session = db_sessionmaker()()
+    sector = (session
+        .query(Sector)
+        .filter(Sector.name == sector_name)
+        .one_or_none()
+    )
+    if sector is None:
+        raise ValueError(f"No {sector_name!r} sector in the database.")
+    centerlines = (session
+        .query(Centerline)
+        .filter(Centerline.geometry.ST_Intersects(sector.geometry))
+        .all()
+    )
+    centerline_ids = set(centerline.id for centerline in centerlines)
+    statistics = (session
+        .query(BlockfaceStatistic)
+        .filter(BlockfaceStatistic.centerline_id.in_(centerline_ids))
+        .all()
+    )
+
+    response_map = dict()
+    for statistic in statistics:
+        if statistic.centerline_id not in response_map:
+            centerline_dict = centerline_obj_to_dict(statistic.centerline)
+            response_map[statistic.centerline_id] = {
+                'centerline': centerline_dict, 'statistics': {0: None, 1: None}
+            }
+        statistic_dict = blockface_statistic_obj_to_dict(statistic)
+        response_map[statistic.centerline_id]['statistics'][statistic.curb] = statistic_dict
+    if include_na:
+        for centerline in centerlines:
+            if centerline.id not in response_map:
+                response_map[centerline.id] = {
+                    'centerline': centerline_obj_to_dict(centerline),
+                    'statistics': {0: None, 1: None}
+                }
+    return [response_map[centerline_id] for centerline_id in response_map]
 
 def coord_get(coord, include_na=False):
     """
@@ -621,6 +686,7 @@ def run_get(run_id):
         raise ValueError(f"No pickups matching a run with ID {run_id} in the database.")
 
     curb_map = defaultdict(list)
+    # TODO: shouldn't this be a set?
     centerline_ids = []
     for pickup in pickups:
         centerline_ids.append(pickup.centerline_id)
