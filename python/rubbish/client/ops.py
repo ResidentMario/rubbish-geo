@@ -5,7 +5,6 @@ import warnings
 from datetime import datetime, timedelta
 from collections import defaultdict, Counter
 import json
-from networkx.algorithms.distance_measures import center
 
 import shapely
 from shapely.geometry import Point, LineString
@@ -566,23 +565,35 @@ def coord_get(coord, include_na=False):
     """
     session = db_sessionmaker()()
     coord = shapely.geometry.Point(*coord)
-    centerline = nearest_centerline_to_point(coord, session)
 
-    if include_na == True:
-        stats_objs = (session
+    def get_stats_objs(session, centerline_id):
+        return (session
             .query(BlockfaceStatistic)
-            .filter(BlockfaceStatistic.centerline_id == centerline.id)
+            .filter(BlockfaceStatistic.centerline_id == centerline_id)
             .all()
         )
-        stats_dicts = blockface_statistic_objs_to_dicts(stats_objs)
-        statistics = {stat_dict['curb']: stat_dict for stat_dict in stats_dicts}
-        if 0 not in statistics:
-            statistics[0] = None
-        if 1 not in statistics:
-            statistics[1] = None
-        return {"centerline": centerline_obj_to_dict(centerline), "statistics": statistics}
+
+    centerline = None
+    if include_na == True:
+        centerline = nearest_centerline_to_point(coord, session)
+        stats_objs = get_stats_objs(session, centerline.id)
     else:
-        raise NotImplementedError
+        stats_objs = []
+        rank = 0
+        while len(stats_objs) == 0:
+            centerline = nearest_centerline_to_point(coord, session, rank=rank)
+            stats_objs = get_stats_objs(session, centerline.id)
+            rank += 1
+            if rank >= 10:
+                raise ValueError("Could not find non-null blockface statistics nearby.")
+
+    stats_dicts = blockface_statistic_objs_to_dicts(stats_objs)
+    statistics = {stat_dict['curb']: stat_dict for stat_dict in stats_dicts}
+    if 0 not in statistics:
+        statistics[0] = None
+    if 1 not in statistics:
+        statistics[1] = None
+    return {"centerline": centerline_obj_to_dict(centerline), "statistics": statistics}
 
 def run_get(run_id):
     """

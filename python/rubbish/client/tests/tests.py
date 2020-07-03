@@ -1,27 +1,24 @@
 """
 Client tests. Be sure to run scripts/init_test_db.sh first.
 """
-import sqlalchemy as sa
-import geopandas as gpd
-import datetime as dt
-from datetime import datetime, timedelta, timezone
-from shapely.geometry import Point, LineString
 import random
-import os
+from datetime import datetime, timezone
+import warnings
+
+import geopandas as gpd
+from shapely.geometry import Point, LineString
 
 import unittest
 from unittest.mock import patch
 import pytest
 
-import rubbish
-from rubbish.common.db_ops import reset_db, db_sessionmaker
+from rubbish.common.db_ops import db_sessionmaker
 from rubbish.common.orm import Pickup, BlockfaceStatistic
 from rubbish.common.test_utils import get_db, clean_db, alias_test_db, insert_grid
 from rubbish.common.consts import RUBBISH_TYPES
 from rubbish.client.ops import (
     write_pickups, run_get, coord_get, nearest_centerline_to_point, point_side_of_centerline
 )
-from rubbish.admin.ops import update_zone
 
 def valid_pickups_from_geoms(geoms, firebase_run_id='foo', curb=None):
     return [{
@@ -234,7 +231,6 @@ class TestPointSideOfCenterline(unittest.TestCase):
         actual = point_side_of_centerline(Point(0, 0), LineString([(0, -1), (0, 1)]))
         assert expected == actual
 
-# TODO: point assignment logic integration tests (use the preexisting run data)
 # TODO: test blockface distance calculation logic
 
 class TestNearestCenterlineToPoint(unittest.TestCase):
@@ -344,4 +340,38 @@ class TestCoordGet(unittest.TestCase):
         )
         write_pickups(input)
         result = coord_get((0.1, -0.0001), include_na=True)
+        assert result['statistics'][0] is not None and result['statistics'][1] is not None
+
+    @clean_db
+    @alias_test_db
+    @insert_grid
+    def testCoordGetNotNA(self):
+        # case 1: no statistics, throws
+        with pytest.raises(ValueError):
+            # ignore the long-match-distance warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                coord_get((0.0001, 0.0001))
+
+        # case 2: no right statistics so stats only has left stats
+        input = valid_pickups_from_geoms(
+            [Point(0.1, 0.0001), Point(0.9, 0.0001)], firebase_run_id='foo', curb='left'
+        )
+        write_pickups(input)
+        result = coord_get((0.1, 0.0001), include_na=False)
+        assert result['statistics'][0] is not None and result['statistics'][1] is None
+
+        # case 3: both sides have stats, so both sides return
+        input = valid_pickups_from_geoms(
+            [Point(0.1, -0.0001), Point(0.9, -0.0001)], firebase_run_id='bar', curb='right'
+        )
+        write_pickups(input)
+        result = coord_get((0.1, -0.0001), include_na=False)
+        assert result['statistics'][0] is not None and result['statistics'][1] is not None
+
+        # case 4: point is closest to some other centerline, but we iter through to match
+        with warnings.catch_warnings():
+            # ignore the long-match-distance warnings
+            warnings.simplefilter('ignore')
+            result = coord_get((1, 1), include_na=False)
         assert result['statistics'][0] is not None and result['statistics'][1] is not None
