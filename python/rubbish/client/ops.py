@@ -478,7 +478,7 @@ def radial_get(coord, distance, include_na=False, offset=0):
     coord : (x, y) coordinate tuple
         Centerpoint for the scan.
     distance : int
-        Distance (in coordinate degrees) from centerpoint to scan for.
+        Distance (in meters) from centerpoint to scan for.
     include_na : bool, optional
         Whether or not to include blockfaces for which blockface statistics do not yet exist.
         Defaults to ``False``.
