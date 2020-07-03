@@ -25,7 +25,8 @@ def upgrade():
         "zones",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("name", sa.String(64), nullable=False),
-        sa.Column("osmnx_name", sa.String(64), nullable=False)
+        sa.Column("osmnx_name", sa.String(64), nullable=False),
+        sa.Column("bounding_box", Geometry("POLYGON", srid=4326), nullable=False)
     )
     # Zone generations allow for changes in the street grid over time.
     op.create_table(
@@ -40,7 +41,7 @@ def upgrade():
         "sectors",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("name", sa.String, nullable=False),
-        sa.Column("geometry", Geometry("MULTIPOLYGON", srid=4326))
+        sa.Column("geometry", Geometry("MULTIPOLYGON", srid=4326), nullable=False)
     )
     # Centerlines are the workhorse of the Rubbish app.
     # Each centerline is an individual street segment of a constrained complexity.

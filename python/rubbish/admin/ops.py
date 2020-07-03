@@ -11,6 +11,8 @@ import geopandas as gpd
 import sqlalchemy as sa
 from geopy.distance import distance
 import shapely
+from geoalchemy2.shape import to_shape
+from shapely.geometry import Polygon
 from rich.console import Console
 from rich.table import Table
 
@@ -135,9 +137,11 @@ def update_zone(osmnx_name, name, centerlines=None, profile=None):
     zone_already_exists = zone_query is not None
     if zone_already_exists:
         zone = zone_query
-        session.close()
     else:
-        zone = Zone(osmnx_name=osmnx_name, name=name)
+        # We need to satisfy the non-null bounding box constraint to flush, but we don't have the
+        # centerlines yet so we can't calculate it yet. For now, just use temporary boundaries.
+        temp_bbox = f'SRID=4326;{str(Polygon([[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]]))}'
+        zone = Zone(osmnx_name=osmnx_name, name=name, bounding_box=temp_bbox)
         session.add(zone)
         session.flush()
 
@@ -187,7 +191,13 @@ def update_zone(osmnx_name, name, centerlines=None, profile=None):
         centerlines["length_in_meters"] = centerlines.geometry.map(_calculate_linestring_length)
     
     else:
-        centerlines["length_in_meters"] = centerlines.geometry.map(_calculate_linestring_length)        
+        centerlines["length_in_meters"] = centerlines.geometry.map(_calculate_linestring_length)
+
+    minx, miny, maxx, maxy = centerlines.total_bounds
+    poly = Polygon([[minx, miny], [minx, maxy], [maxx, maxy], [maxx, miny], [minx, miny]])
+    bbox = f'SRID=4326;{str(poly)}'
+    zone.bounding_box = bbox
+
     conn = sa.create_engine(get_db())
 
     # Cap the previous centerline generations (see previous comment).
@@ -238,16 +248,19 @@ def show_zones(profile=None):
         table.add_column("ID", justify="left")
         table.add_column("Name", justify="left")
         table.add_column("OSMNX Name", justify="left")
-        table.add_column("# Generations", justify="right")
-        table.add_column("# Centerlines", justify="right")
+        table.add_column("N(Generations)", justify="right")
+        table.add_column("N(Centerlines)", justify="right")
+        table.add_column("Bounding Box", justify="left")
         for zone in zones:
             zone_gen_ids = [gen.id for gen in zone.zone_generations]
             n_centerlines = (
                 session.query(Centerline).filter(Centerline.id in zone_gen_ids).count()
             )
+            bounds = to_shape(zone.bounding_box).bounds
+            bounds = str(tuple(f'{v:.4f}' for v in bounds)).replace("'", "")
             table.add_row(
                 str(zone.id), zone.name, zone.osmnx_name, str(len(zone.zone_generations)),
-                str(n_centerlines)
+                str(n_centerlines), str(bounds)
             )
         console.print(table)
 
@@ -315,13 +328,16 @@ def show_sectors(profile=None):
     sectors = session.query(Sector).all()
     if len(sectors) == 0:
         print("No sectors in the database. :(")
+        return
 
     console = Console()
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("ID", justify="left")
     table.add_column("Name", justify="left")
+    table.add_column("Bounding Box", justify="left")
     for sector in session.query(Sector).all():
-        table.add_row(str(sector.id), sector.name)
+        bounds = str(to_shape(sector.geometry).bounds)
+        table.add_row(str(sector.id), sector.name, bounds)
     console.print(table)
 
 __all__ = ['update_zone', 'show_zones', 'insert_sector', 'delete_sector', 'show_sectors']
