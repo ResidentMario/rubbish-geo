@@ -110,7 +110,7 @@ def _calculate_linestring_length(linestring):
         length += distance(linestring.coords[idx_a][::-1], linestring.coords[idx_b][::-1]).meters
     return length
 
-def update_zone(osmnx_name, name, centerlines=None):
+def update_zone(osmnx_name, name, centerlines=None, profile=None):
     """
     Updates a zone, plopping the new centerlines into the database.
 
@@ -118,7 +118,7 @@ def update_zone(osmnx_name, name, centerlines=None):
     
     The optional `centerlines` argument is used to avoid a network request in testing.
     """
-    session = db_sessionmaker()()
+    session = db_sessionmaker(profile=profile)()
 
     # insert zone
     # NOTE: flush writes DB ops to the database's transactional buffer without actually
@@ -223,9 +223,9 @@ def update_zone(osmnx_name, name, centerlines=None):
     finally:
         session.close()
 
-def show_zones():
+def show_zones(profile=None):
     """Pretty-prints a list of zones in the database."""
-    session = db_sessionmaker()()
+    session = db_sessionmaker(profile=profile)()
     zones = (session
         .query(Zone)
         .all()
@@ -271,8 +271,8 @@ def _validate_sector_geom(filepath):
         raise ValueError(f"Input sector has unsupported {sector_shape.geom_type} union type.")
     return sector_shape
 
-def insert_sector(sector_name, filepath):
-    session = db_sessionmaker()()
+def insert_sector(sector_name, filepath, profile=None):
+    session = db_sessionmaker(profile=profile)()
 
     if session.query(Sector).filter_by(name=sector_name).count() != 0:
         raise ValueError(
@@ -292,8 +292,8 @@ def insert_sector(sector_name, filepath):
     finally:
         session.close()
 
-def delete_sector(sector_name):
-    session = db_sessionmaker()()
+def delete_sector(sector_name, profile=None):
+    session = db_sessionmaker(profile=profile)()
 
     sector = session.query(Sector).filter_by(name=sector_name).one_or_none()
     if sector is None:
@@ -308,9 +308,9 @@ def delete_sector(sector_name):
     finally:
         session.close()
 
-def show_sectors():
+def show_sectors(profile=None):
     """Pretty-prints a list of sectors in the database."""
-    session = db_sessionmaker()()
+    session = db_sessionmaker(profile=profile)()
     
     sectors = session.query(Sector).all()
     if len(sectors) == 0:

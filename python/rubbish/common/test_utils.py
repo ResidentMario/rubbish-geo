@@ -11,7 +11,8 @@ import rubbish
 from rubbish.common.db_ops import reset_db, db_sessionmaker
 from rubbish.admin.ops import update_zone
 
-get_db = lambda: f"postgresql://rubbish-test-user:polkstreet@localhost:5432/rubbish"
+def get_db(profile=None):
+    return f"postgresql://rubbish-test-user:polkstreet@localhost:5432/rubbish"
 
 def clean_db(f):
     """
