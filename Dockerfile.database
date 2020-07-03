@@ -1,18 +1,18 @@
-FROM postgis/postgis:latest
+FROM postgis/postgis:12-3.0
 # TODO: build psycopg2-binary from source
 RUN apt-get update && \
     apt-get -y install python3-pip && \
-    python3 -m pip install --no-cache-dir alembic psycopg2-binary sqlalchemy geoalchemy2
+    python3 -m pip install --no-cache-dir psycopg2-binary sqlalchemy geoalchemy2
 ENV CONNSTR=postgresql://rubbish-test-user@localhost:5432/rubbish
 # NOTE: migration must be run manually after last step:
 # $ docker exec -it $CONTAINER_NAME alembic -c test_alembic.ini upgrade head
 # This is considered acceptable practice: https://stackoverflow.com/a/51926141/1993206
 COPY python/ python/
-RUN apt-get -y install git && \
-    cp python/rubbish/common/alembic.ini alembic.ini && \
+RUN cp python/rubbish/common/alembic.ini alembic.ini && \
     cp -r python/rubbish/common/migrations/ migrations/ && \
     cat alembic.ini | \
         sed -E "s|sqlalchemy.url = [a-zA-Z:/_0-9@\.-]*|sqlalchemy.url = $CONNSTR|" > \
         test_alembic.ini && \
     rm -rf python/ alembic.ini
+RUN python3 -m pip install alembic
 # NOTE: ENTRYPOINT is inherited from postgres base
