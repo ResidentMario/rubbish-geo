@@ -1,7 +1,6 @@
 """
-Admin client tests. Be sure to run scripts/init_test_db.sh first.
+Admin client tests.
 """
-import sqlalchemy as sa
 import geopandas as gpd
 from datetime import datetime, timedelta
 from shapely.geometry import LineString, Polygon, MultiPolygon

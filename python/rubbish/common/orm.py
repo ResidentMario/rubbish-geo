@@ -10,10 +10,14 @@ class Zone(Base):
     id = sa.Column(sa.Integer, primary_key=True)
     name = sa.Column(sa.String(64), nullable=False)
     osmnx_name = sa.Column(sa.String(64), nullable=False)
+    bounding_box = sa.Column(Geometry("POLYGON"), nullable=False)
     zone_generations = relationship("ZoneGeneration", back_populates="zone")
 
     def __repr__(self):
-        return f"<Zone id={self.id} name={self.name} osxmn_name={self.osmnx_name}>"
+        return (
+            f"""<Zone id={self.id} name={self.name} osxmn_name={self.osmnx_name} """
+            f"""bounding_box={self.bounding_box}>"""
+        )
 
 class ZoneGeneration(Base):
     __tablename__ = "zone_generations"
