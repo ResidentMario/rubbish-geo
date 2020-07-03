@@ -293,8 +293,6 @@ def insert_sector(sector_name, filepath, profile=None):
         session.close()
 
 def delete_sector(sector_name, profile=None):
-    if profile is None:
-        profile = 'default'
     session = db_sessionmaker(profile=profile)()
 
     sector = session.query(Sector).filter_by(name=sector_name).one_or_none()

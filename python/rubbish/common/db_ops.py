@@ -62,9 +62,6 @@ def reset_db(profile=None):
     """
     Resets the current database, deleting all data.
     """
-    if profile is None:
-        profile = 'default'
-
     session = db_sessionmaker(profile=profile)()
 
     engine = session.bind
