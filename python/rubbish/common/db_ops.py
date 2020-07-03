@@ -5,46 +5,67 @@ Generic DB operations unrelated to application state.
 import click
 import pathlib
 import os
+import configparser
+
 import sqlalchemy as sa
 from sqlalchemy.orm.session import sessionmaker
 from .orm import (Zone, ZoneGeneration, Sector, Centerline, Pickup, BlockfaceStatistic)
 
 APPDIR = pathlib.Path(click.get_app_dir("rubbish", force_posix=True))
 
-def set_db(dbstr):
+def set_db(dbstr, profile=None):
     """
-    Sets the target database (writing the input value to disk).
+    Sets the target database connection string (writing the input value to disk).
     """
+    if profile is None:
+        profile = 'default'
+
     if not APPDIR.exists():
         os.makedirs(APPDIR)
-    with open(APPDIR / "config", "w") as f:
-        f.write(dbstr)
 
-def get_db():
+    cfg_fp = APPDIR / "config"
+    cfg = configparser.ConfigParser()
+    if cfg_fp.exists():
+        cfg.read(cfg_fp)
+    cfg[profile] = {'connstr': dbstr}
+    with open(cfg_fp, "w") as f:
+        cfg.write(f)
+
+def get_db(profile=None):
     """
     Gets the current database. Returns None if unset.
     """
-    cfg = APPDIR / "config"
-    if not cfg.exists():
-        return None
-    with open(APPDIR / "config", "r") as f:
-        return f.read().strip()
+    if profile is None:
+        profile = 'default'
 
-def db_sessionmaker():
+    cfg_fp = APPDIR / "config"
+    if not cfg_fp.exists():
+        return None
+    cfg = configparser.ConfigParser()
+    cfg.read(cfg_fp)
+    return cfg[profile]['connstr']
+
+def db_sessionmaker(profile=None):
     """
     Returns a sessionmaker object for creating DB sessions.
     """
-    connstr = get_db()
+    if profile is None:
+        profile = 'default'
+    
+    connstr = get_db(profile=profile)
     if connstr == None:
         raise ValueError("connection string not set, run set_db first")
     engine = sa.create_engine(connstr)
     return sessionmaker(bind=engine)
 
-def reset_db():
+def reset_db(profile=None):
     """
     Resets the current database, deleting all data.
     """
-    session = db_sessionmaker()()
+    if profile is None:
+        profile = 'default'
+
+    session = db_sessionmaker(profile=profile)()
 
     engine = session.bind
     engine.execute('ALTER SEQUENCE zones_id_seq RESTART WITH 1;')

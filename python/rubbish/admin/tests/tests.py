@@ -10,10 +10,8 @@ import unittest
 from unittest.mock import patch
 import pytest
 import tempfile
-import os
 
-import rubbish
-from rubbish.common.db_ops import reset_db, db_sessionmaker
+from rubbish.common.db_ops import db_sessionmaker
 from rubbish.common.orm import Zone, ZoneGeneration, Centerline, Sector
 from rubbish.common.test_utils import get_db, clean_db, alias_test_db, insert_grid, get_grid
 from rubbish.admin.ops import update_zone, insert_sector, delete_sector, show_zones, show_sectors
