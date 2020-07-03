@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from collections import defaultdict, Counter
 import json
 
-import sqlalchemy as sa
 import shapely
 from shapely.geometry import Point, LineString
 import geoalchemy2
@@ -418,17 +417,31 @@ def write_pickups(pickups, check_distance=True):
     finally:
         session.close()
 
-def _bf_statistic_to_dict(stat):
-    # WKBElement -> shapely.geometry.LineString -> dict -> JSONified dict
-    # Cf. https://gis.stackexchange.com/a/233246/74038
-    #     https://stackoverflow.com/a/57792988/1993206
-    geom = json.dumps(
-        shapely.geometry.mapping(
-            to_shape(
-                stat.centerline.geometry
-            )
-        )
-    )
+def wkb_to_geojson(wkb):
+    """
+    Helper method used for converting data in the ORM WKB format into data in the output GeoJSON
+    format.
+
+    Implements the following transform: WKBElement -> shapely.geometry.LineString -> dict ->
+    JSONified dict.
+
+    See further https://gis.stackexchange.com/a/233246/74038 and
+    https://stackoverflow.com/a/57792988/1993206.
+    """
+    return json.dumps(shapely.geometry.mapping(to_shape(wkb)))
+
+def blockface_statistic_obj_to_dict(stat):
+    """
+    Transforms a `rubbish.common.orm.BlockfaceStatistic` object into a `dict` and returns it.
+
+    This is mostly a direct translation of the ORM object. The major exception is that the geometry
+    returned by `geoalchemy2` is in WKB, but we need it in GeoJSON. This requires the following
+    transform: WKBElement -> shapely.geometry.LineString -> dict -> JSONified dict.
+    
+    See further https://gis.stackexchange.com/a/233246/74038 and
+    https://stackoverflow.com/a/57792988/1993206.
+    """
+    geom = wkb_to_geojson(stat.centerline.geometry)
     return {
         "centerline_id": stat.centerline_id,
         "centerline_geometry": geom,
@@ -439,17 +452,18 @@ def _bf_statistic_to_dict(stat):
         "num_runs": stat.num_runs,
     }
 
-def _centerline_to_dict(centerline):
-    geom = json.dumps(
-        shapely.geometry.mapping(
-            to_shape(
-                centerline.geometry
-            )
-        )
-    )
+def blockface_statistic_objs_to_dicts(stats):
+    """
+    Transforms a lit of `rubbish.common.orm.BlockfaceStatistic` objects into a `list` of `dict`
+    objects and returns it. Uses `blockface_statistic_obj_to_dict`.
+    """
+    return [blockface_statistic_obj_to_dict(stat) for stat in stats]
+
+def centerline_obj_to_dict(centerline):
+    geom = wkb_to_geojson(centerline.geometry)
     return {
         "id": centerline.id,
-        "geometry": centerline.geometry,
+        "geometry": geom,
         "centerline_length_in_meters": centerline.length_in_meters,
         "centerline_name": centerline.name,
     }
@@ -551,18 +565,35 @@ def coord_get(coord, include_na=False):
     """
     session = db_sessionmaker()()
     coord = shapely.geometry.Point(*coord)
-    centerline = nearest_centerline_to_point(coord, session)
 
-    if include_na == True:
-        stats = (session
+    def get_stats_objs(session, centerline_id):
+        return (session
             .query(BlockfaceStatistic)
-            .filter(BlockfaceStatistic.centerline_id == centerline.id)
+            .filter(BlockfaceStatistic.centerline_id == centerline_id)
             .all()
         )
-        stats_out = list(map(_bf_statistic_to_dict, stats))
-        return {"centerline": _centerline_to_dict(centerline), "stats": stats_out}
+
+    centerline = None
+    if include_na == True:
+        centerline = nearest_centerline_to_point(coord, session)
+        stats_objs = get_stats_objs(session, centerline.id)
     else:
-        raise NotImplementedError
+        stats_objs = []
+        rank = 0
+        while len(stats_objs) == 0:
+            centerline = nearest_centerline_to_point(coord, session, rank=rank)
+            stats_objs = get_stats_objs(session, centerline.id)
+            rank += 1
+            if rank >= 10:
+                raise ValueError("Could not find non-null blockface statistics nearby.")
+
+    stats_dicts = blockface_statistic_objs_to_dicts(stats_objs)
+    statistics = {stat_dict['curb']: stat_dict for stat_dict in stats_dicts}
+    if 0 not in statistics:
+        statistics[0] = None
+    if 1 not in statistics:
+        statistics[1] = None
+    return {"centerline": centerline_obj_to_dict(centerline), "statistics": statistics}
 
 def run_get(run_id):
     """
@@ -576,7 +607,7 @@ def run_get(run_id):
     Returns
     -------
     ``dict``
-        Query result.    
+        Query result.
     """
     session = db_sessionmaker()()
     # Runs are not a native object in the analytics database. Instead, pickups are stored
@@ -595,17 +626,26 @@ def run_get(run_id):
         centerline_ids.append(pickup.centerline_id)
         curb_map[pickup.centerline_id].append(pickup.curb)
 
-    stats = (
+    statistics = (
         session.query(BlockfaceStatistic)
         .filter(BlockfaceStatistic.centerline_id.in_(centerline_ids))
         .all()
     )
-    stats_filtered = []
-    for stat in stats:
-        if stat.curb in curb_map[stat.centerline_id]:
-            stats_filtered.append(stat)
+    statistics_filtered = []
+    for statistic in statistics:
+        if statistic.curb in curb_map[statistic.centerline_id]:
+            statistics_filtered.append(statistic)
 
-    return list(map(_bf_statistic_to_dict, stats_filtered))
+    response_map = dict()
+    for statistic in statistics_filtered:
+        if statistic.centerline_id not in response_map:
+            centerline_dict = centerline_obj_to_dict(statistic.centerline)
+            response_map[statistic.centerline_id] = {
+                'centerline': centerline_dict, 'statistics': {0: None, 1: None}
+            }
+        statistic_dict = blockface_statistic_obj_to_dict(statistic)
+        response_map[statistic.centerline_id]['statistics'][statistic.curb] = statistic_dict
+    return [response_map[centerline_id] for centerline_id in response_map]
 
 __all__ = [
     'write_pickups', 'radial_get', 'sector_get', 'coord_get', 'run_get',
