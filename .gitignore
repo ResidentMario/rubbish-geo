@@ -8,3 +8,4 @@ test_alembic.ini
 default.profraw
 fixtures/
 notebooks/
+*.ipynb
