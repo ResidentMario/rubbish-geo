@@ -15,5 +15,10 @@
   "bugs": {
     "url": "https://github.com/ResidentMario/rubbish-api-service/issues"
   },
-  "homepage": "https://github.com/ResidentMario/rubbish-api-service#readme"
+  "homepage": "https://github.com/ResidentMario/rubbish-api-service#readme",
+  "devDependencies": {
+    "firebase-admin": "^8.13.0",
+    "uuid": "^8.2.0"
+  },
+  "dependencies": {}
 }
