@@ -35,6 +35,9 @@ def get_db(profile=None):
     """
     Gets the current database. Returns None if unset.
     """
+    if 'RUBBISH_POSTGIS_CONNSTR' in os.environ:
+        return os.environ['RUBBISH_POSTGIS_CONNSTR']
+
     if profile is None:
         profile = 'default'
 
