@@ -1,7 +1,6 @@
 """
 Client tests. Be sure to run scripts/init_test_db.sh first.
 """
-import random
 from datetime import datetime, timezone
 import warnings
 import tempfile
@@ -15,23 +14,14 @@ import pytest
 
 from rubbish.common.db_ops import db_sessionmaker
 from rubbish.common.orm import Pickup, BlockfaceStatistic
-from rubbish.common.test_utils import get_db, clean_db, alias_test_db, insert_grid
-from rubbish.common.consts import RUBBISH_TYPES
+from rubbish.common.test_utils import (
+    get_db, clean_db, alias_test_db, insert_grid, valid_pickups_from_geoms
+)
 from rubbish.client.ops import (
     write_pickups, run_get, coord_get, nearest_centerline_to_point, point_side_of_centerline,
     sector_get, radial_get
 )
 from rubbish.admin.ops import insert_sector
-
-def valid_pickups_from_geoms(geoms, firebase_run_id='foo', curb=None):
-    return [{
-        'firebase_id': str(abs(hash(i))),
-        'firebase_run_id': firebase_run_id,
-        'type': random.choice(RUBBISH_TYPES),
-        'timestamp': str(datetime.now().replace(tzinfo=timezone.utc).timestamp()),
-        'curb': curb,
-        'geometry': geom
-    } for i, geom in enumerate(geoms)]
 
 class TestWritePickups(unittest.TestCase):
     def setUp(self):

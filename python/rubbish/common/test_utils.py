@@ -1,15 +1,18 @@
 """
 Methods useful for testing used in both admin and client tests.
 """
-import geopandas as gpd
 from unittest.mock import patch
 import warnings
+from datetime import datetime, timezone
+import random
 
+import geopandas as gpd
 from shapely.geometry import LineString
 
 import rubbish
 from rubbish.common.db_ops import reset_db, db_sessionmaker
 from rubbish.admin.ops import update_zone
+from rubbish.common.consts import RUBBISH_TYPES
 
 def get_db(profile=None):
     return f"postgresql://rubbish-test-user:polkstreet@localhost:5432/rubbish"
@@ -76,3 +79,13 @@ def insert_grid(f):
             update_zone("Grid City, California", "Grid City, California", centerlines=grid)
         f(*args, **kwargs)
     return inner
+
+def valid_pickups_from_geoms(geoms, firebase_run_id='foo', curb=None):
+    return [{
+        'firebase_id': str(abs(hash(i))),
+        'firebase_run_id': firebase_run_id,
+        'type': random.choice(RUBBISH_TYPES),
+        'timestamp': str(datetime.now().replace(tzinfo=timezone.utc).timestamp()),
+        'curb': curb,
+        'geometry': geom
+    } for i, geom in enumerate(geoms)]
