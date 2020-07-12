@@ -129,8 +129,8 @@ def write_pickups(pickups, check_distance=True):
     Writes pickups to the database. Pickups is expected to be a list of entries in the format:
 
     ```
-    {"firebase_id": <int>,
-     "firebase_run_id": <int>,
+    {"firebase_id": <str>,
+     "firebase_run_id": <str>,
      "type": <int, see key in docs>,
      "timestamp": <int; UTC UNIX timestamp>,
      "curb": <{left, right, None}; user statement of side of the street>,
@@ -163,7 +163,7 @@ def write_pickups(pickups, check_distance=True):
         if not isinstance(geom, Point):
             raise ValueError(f"Found geometry of invalid type {type(geom)}.")
         pickup["geometry"] = geom
-        for int_attr in ["firebase_id", "timestamp"]:
+        for int_attr in ["timestamp"]:
             try:
                 pickup[int_attr] = int(float(pickup[int_attr]))
             except ValueError:
@@ -530,6 +530,8 @@ def radial_get(coord, distance, include_na=False, offset=0):
                     'centerline': centerline_obj_to_dict(centerline),
                     'statistics': {0: None, 1: None}
                 }
+    if len(response_map) == 0:
+        return []
     return [response_map[centerline_id] for centerline_id in response_map]
 
 def sector_get(sector_name, include_na=False, offset=0):
