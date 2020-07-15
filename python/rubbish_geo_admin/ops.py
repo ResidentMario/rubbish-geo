@@ -16,8 +16,8 @@ from shapely.geometry import Polygon
 from rich.console import Console
 from rich.table import Table
 
-from rubbish.common.db_ops import db_sessionmaker, get_db
-from rubbish.common.orm import Zone, ZoneGeneration, Centerline, Sector
+from rubbish_geo_common.db_ops import db_sessionmaker, get_db
+from rubbish_geo_common.orm import Zone, ZoneGeneration, Centerline, Sector
 
 def _get_name_for_centerline_edge(G, u, v):
     """

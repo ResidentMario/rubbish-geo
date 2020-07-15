@@ -2,17 +2,14 @@
 Methods useful for testing used in both admin and client tests.
 """
 from unittest.mock import patch
-import warnings
 from datetime import datetime, timezone
 import random
 
 import geopandas as gpd
 from shapely.geometry import LineString
 
-import rubbish
-from rubbish.common.db_ops import reset_db, db_sessionmaker
-from rubbish.admin.ops import update_zone
-from rubbish.common.consts import RUBBISH_TYPES
+from rubbish_geo_common.db_ops import reset_db
+from rubbish_geo_common.consts import RUBBISH_TYPES
 
 def get_db(profile=None):
     return f"postgresql://rubbish-test-user:polkstreet@localhost:5432/rubbish"
@@ -22,7 +19,7 @@ def clean_db(f):
     Wrapper function that resets the database, dropping all data and resetting all ID sequences.
     """
     def inner(*args, **kwargs):
-        with patch('rubbish.common.db_ops.get_db', new=get_db):
+        with patch('rubbish_geo_common.db_ops.get_db', new=get_db):
             reset_db()
             f(*args, **kwargs)
     return inner
@@ -33,8 +30,7 @@ def alias_test_db(f):
     database.
     """
     def inner(*args, **kwargs):
-        with patch('rubbish.common.db_ops.get_db', new=get_db), \
-            patch('rubbish.admin.ops.get_db', new=get_db):
+        with patch('rubbish_geo_common.db_ops.get_db', new=get_db):
             f(*args, **kwargs)
     return inner
 
@@ -72,10 +68,10 @@ def insert_grid(f):
     """
     Wrapper function that inserts the basic street grid centerline data into the database.
     """
+    from rubbish_geo_admin import update_zone
     grid = get_grid()
     def inner(*args, **kwargs):
-        with patch('rubbish.common.db_ops.get_db', new=get_db), \
-            patch('rubbish.admin.ops.get_db', new=get_db):
+        with patch('rubbish_geo_common.db_ops.get_db', new=get_db):
             update_zone("Grid City, California", "Grid City, California", centerlines=grid)
         f(*args, **kwargs)
     return inner

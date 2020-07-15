@@ -9,7 +9,9 @@ import configparser
 
 import sqlalchemy as sa
 from sqlalchemy.orm.session import sessionmaker
-from .orm import (Zone, ZoneGeneration, Sector, Centerline, Pickup, BlockfaceStatistic)
+from rubbish_geo_common.orm import (
+    Zone, ZoneGeneration, Sector, Centerline, Pickup, BlockfaceStatistic
+)
 
 APPDIR = pathlib.Path(click.get_app_dir("rubbish", force_posix=True))
 

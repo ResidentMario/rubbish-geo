@@ -10,14 +10,14 @@ from unittest.mock import patch
 import pytest
 import tempfile
 
-from rubbish.common.db_ops import db_sessionmaker
-from rubbish.common.orm import Zone, ZoneGeneration, Centerline, Sector
-from rubbish.common.test_utils import get_db, clean_db, alias_test_db, insert_grid, get_grid
-from rubbish.admin.ops import update_zone, insert_sector, delete_sector, show_zones, show_sectors
+from rubbish_geo_common.db_ops import db_sessionmaker
+from rubbish_geo_common.orm import Zone, ZoneGeneration, Centerline, Sector
+from rubbish_geo_common.test_utils import get_db, clean_db, alias_test_db, insert_grid, get_grid
+from rubbish_geo_admin import update_zone, insert_sector, delete_sector, show_zones, show_sectors
 
 class TestUpdateZone(unittest.TestCase):
     def setUp(self):
-        with patch('rubbish.common.db_ops.get_db', new=get_db):
+        with patch('rubbish_geo_common.db_ops.get_db', new=get_db):
             self.session = db_sessionmaker()()
 
     @clean_db
@@ -68,7 +68,7 @@ class TestUpdateZone(unittest.TestCase):
 
 class testSectorOps(unittest.TestCase):
     def setUp(self):
-        with patch('rubbish.common.db_ops.get_db', new=get_db):
+        with patch('rubbish_geo_common.db_ops.get_db', new=get_db):
             self.session = db_sessionmaker()()
 
     @clean_db
