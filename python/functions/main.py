@@ -1,11 +1,10 @@
 """
 Cloud functions defining the rubbish-geo private API.
 """
-import requests
 import shapely
 
-from rubbish.client import write_pickups, radial_get, sector_get, coord_get, run_get
-from rubbish.common.db_ops import get_db
+from rubbish_geo_client import write_pickups, radial_get, sector_get, coord_get, run_get
+from rubbish_geo_common.db_ops import get_db
 
 def POST_pickups(request):
     """

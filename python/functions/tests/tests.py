@@ -13,12 +13,11 @@ import requests
 from shapely.geometry import Point, Polygon
 import geopandas as gpd
 
-from rubbish.common.test_utils import (
+from rubbish_geo_common.test_utils import (
     clean_db, alias_test_db, insert_grid, valid_pickups_from_geoms
 )
-from rubbish.admin.ops import insert_sector
-from rubbish.client.ops import write_pickups
-from rubbish.common.consts import RUBBISH_TYPES
+from rubbish_geo_admin import insert_sector
+from rubbish_geo_client.ops import write_pickups
 
 F_URL = "http://localhost:8080" if "FUNCTION_SERVICE_URL" not in os.environ\
     else os.environ["FUNCTION_SERVICE_URL"]
