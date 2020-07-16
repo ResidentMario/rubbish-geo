@@ -24,7 +24,7 @@ install:
   - conda update -q conda
   - conda info -a
 
-  - conda create -c conda-forge -q -n test-environment python=$TRAVIS_PYTHON_VERSION geopandas>=0.8.0 geopy osmnx scipy
+  - conda create -c conda-forge -q -n test-environment python=$TRAVIS_PYTHON_VERSION geopandas\>=0.8.0 geopy osmnx scipy
   - conda activate test-environment
   - pushd python/rubbish_geo_common && pip install . && popd
   - pushd python/rubbish_geo_client && pip install .[develop] && popd
