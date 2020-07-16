@@ -30,5 +30,5 @@ install:
   - pushd python/rubbish_geo_client && pip install .[develop] && popd
   - pushd python/rubbish_geo_admin  && pip install .[develop] && popd
 script:
-  - pytest python/rubbish_geo_admin/tests/tests.py
   - pytest python/rubbish_geo_client/tests/tests.py
+  - pytest python/rubbish_geo_admin/tests/tests.py
