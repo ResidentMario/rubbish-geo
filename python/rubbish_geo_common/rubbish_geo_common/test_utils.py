@@ -5,7 +5,6 @@ from unittest.mock import patch
 from datetime import datetime, timezone
 import random
 
-import geopandas as gpd
 from shapely.geometry import LineString
 
 from rubbish_geo_common.db_ops import reset_db
@@ -35,6 +34,13 @@ def alias_test_db(f):
     return inner
 
 def get_grid():
+    # NOTE(aleksey): importing this here and not at the top level in order to avoid making
+    # geopandas a package dependency. This is important because we need this package to be
+    # installable inside a Cloud Function, which can only use pip for its dependencies. geopandas
+    # has a dependency on rtree, which annoyingly can *only* be installed using conda, not pip.
+    # Since geopandas is only used in test utilities, we can sidestep the problem by making it a
+    # function-scoped import instead of a module import.
+    import geopandas as gpd
     return gpd.GeoDataFrame(
         {
             'osmid': range(12),
