@@ -8,8 +8,8 @@ ENV CONNSTR=postgresql://rubbish-test-user@localhost:5432/rubbish
 # $ docker exec -it $CONTAINER_NAME alembic -c test_alembic.ini upgrade head
 # This is considered acceptable practice: https://stackoverflow.com/a/51926141/1993206
 COPY python/ python/
-RUN cp python/rubbish/common/alembic.ini alembic.ini && \
-    cp -r python/rubbish/common/migrations/ migrations/ && \
+RUN cp -r python/migrations/ migrations/ && \
+    cp migrations/alembic.ini alembic.ini && \
     cat alembic.ini | \
         sed -E "s|sqlalchemy.url = [a-zA-Z:/_0-9@\.-]*|sqlalchemy.url = $CONNSTR|" > \
         test_alembic.ini && \

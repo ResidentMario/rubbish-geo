@@ -1,7 +1,6 @@
 """
-Client tests. Be sure to run scripts/init_test_db.sh first.
+Client tests. For instructions on running these tests, refer to the README.
 """
-from datetime import datetime, timezone
 import warnings
 import tempfile
 
@@ -12,20 +11,27 @@ import unittest
 from unittest.mock import patch
 import pytest
 
-from rubbish.common.db_ops import db_sessionmaker
-from rubbish.common.orm import Pickup, BlockfaceStatistic
-from rubbish.common.test_utils import (
+from rubbish_geo_common.db_ops import db_sessionmaker
+from rubbish_geo_common.orm import Pickup, BlockfaceStatistic
+from rubbish_geo_common.test_utils import (
     get_db, clean_db, alias_test_db, insert_grid, valid_pickups_from_geoms
 )
-from rubbish.client.ops import (
+from rubbish_geo_client.ops import (
     write_pickups, run_get, coord_get, nearest_centerline_to_point, point_side_of_centerline,
     sector_get, radial_get
 )
-from rubbish.admin.ops import insert_sector
+
+try:
+    import rubbish_geo_admin as _
+except (ImportError, ModuleNotFoundError):
+    raise ValueError(
+        "Running `rubbish_geo_client` tests require installing the `rubbish_geo_admin` package "
+        "first."
+    )
 
 class TestWritePickups(unittest.TestCase):
     def setUp(self):
-        with patch('rubbish.common.db_ops.get_db', new=get_db):
+        with patch('rubbish_geo_common.db_ops.get_db', new=get_db):
             self.session = db_sessionmaker()()
 
     @clean_db
@@ -228,7 +234,7 @@ class TestPointSideOfCenterline(unittest.TestCase):
 
 class TestNearestCenterlineToPoint(unittest.TestCase):
     def setUp(self):
-        with patch('rubbish.common.db_ops.get_db', new=get_db):
+        with patch('rubbish_geo_common.get_db', new=get_db):
             self.session = db_sessionmaker()()
 
     @clean_db
@@ -272,7 +278,7 @@ class TestNearestCenterlineToPoint(unittest.TestCase):
 
 class TestRunGet(unittest.TestCase):
     def setUp(self):
-        with patch('rubbish.common.db_ops.get_db', new=get_db):
+        with patch('rubbish_geo_common.db_ops.get_db', new=get_db):
             self.session = db_sessionmaker()()
 
     @clean_db
@@ -306,7 +312,7 @@ class TestRunGet(unittest.TestCase):
 
 class TestCoordGet(unittest.TestCase):
     def setUp(self):
-        with patch('rubbish.common.db_ops.get_db', new=get_db):
+        with patch('rubbish_geo_common.db_ops.get_db', new=get_db):
             self.session = db_sessionmaker()()
 
     @clean_db
@@ -371,7 +377,7 @@ class TestCoordGet(unittest.TestCase):
 
 class TestSectorGet(unittest.TestCase):
     def setUp(self):
-        with patch('rubbish.common.db_ops.get_db', new=get_db):
+        with patch('rubbish_geo_common.db_ops.get_db', new=get_db):
             self.session = db_sessionmaker()()
 
     @clean_db
@@ -385,6 +391,8 @@ class TestSectorGet(unittest.TestCase):
     @alias_test_db
     @insert_grid
     def testSectorGet(self):
+        from rubbish_geo_admin.ops import insert_sector
+
         with tempfile.TemporaryDirectory() as tmpdir:
             # TODO: generalize this across both here and admin/tests.py as a util.
             poly = Polygon([[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]])
@@ -405,7 +413,7 @@ class TestSectorGet(unittest.TestCase):
 
 class TestRadialGet(unittest.TestCase):
     def setUp(self):
-        with patch('rubbish.common.db_ops.get_db', new=get_db):
+        with patch('rubbish_geo_common.db_ops.get_db', new=get_db):
             self.session = db_sessionmaker()()
 
     @clean_db
