@@ -1,3 +1,4 @@
+CI DISABLED FOR NOW SEE FURTHER GH#38
 dist: xenial
 language: python
 sudo: true
