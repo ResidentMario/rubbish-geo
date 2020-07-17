@@ -1,4 +1,5 @@
 #!/bin/bash
+# Run this script to deploy or redeploy the private API.
 set -e
 
 # Set this to the PostGIS database URI. This value will be read by rubbish.common.db_ops.get_db
@@ -61,3 +62,4 @@ do
         --trigger-http
     echo "Deployed function $FNAME successfully. ✔️"
 done
+echo "All done! To see the functions deployed visit https://console.cloud.google.com/functions/."
