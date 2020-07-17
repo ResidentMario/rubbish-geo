@@ -4,11 +4,7 @@ This directory contains the cloud functions defining the private `rubbish-geo` A
 
 ## installation
 
-If you haven't already, install the `rubbish` package (see the `README` in the `python/rubbish` folder for details).
-
-```bash
-$ pip install -r requirements.txt
-```
+Installing the packages required by `rubbish-geo-admin` in `[develop]` mode installs everything you need for testing functions as well. See the `README` in the `python/` folder for details.
 
 ## testing
 

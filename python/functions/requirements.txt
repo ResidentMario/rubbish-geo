@@ -1,4 +1,6 @@
-functions-framework==2.0.0
-requests==2.24.0
-git+https://github.com/ResidentMario/rubbish-api-service#subdirectory=python/rubbish_geo_admin
-git+https://github.com/ResidentMario/rubbish-api-service#subdirectory=python/rubbish_geo_client
+shapely
+sqlalchemy
+psycopg2
+geoalchemy2
+scipy
+click

@@ -8,7 +8,7 @@ setup(
         'sqlalchemy', 'psycopg2', 'geoalchemy2', 'click', 'osmnx', 'geopandas>=0.8.0', 'geopy',
         'rich', 'scipy'
     ],
-    extras_require={'develop': ['alembic', 'pylint', 'pytest']},
+    extras_require={'develop': ['alembic', 'pylint', 'pytest', 'functions-framework']},
     entry_points='''
         [console_scripts]
         rubbish-admin=rubbish_geo_admin.cli:cli
