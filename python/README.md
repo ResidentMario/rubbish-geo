@@ -51,13 +51,8 @@ $ psql -U rubbish-test-user -h localhost -p 5432 rubbish
 Finally, to run the tests:
 
 ```bash
-$ cd python/rubbish/admin/tests
-$ pytest tests.py
-```
-
-```bash
-$ cd python/rubbish/client/tests
-$ pytest tests.py
+$ pytest python/rubbish_geo_client/tests/tests.py
+$ pytest python/rubbish_geo_admin/tests/tests.py
 ```
 
 Note: you will need to rebuild the container (with `--no-cache` set) every time you update the database migrations.
