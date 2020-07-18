@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+# Running this script creates a new backing database in your currently authenticated profile,
+# if one doesn't already exist. If one already does, runs the database migrations instead.
+#
+# NOTE(aleksey): instance names are reserved for up to a week after an instance is deleted.
+
 # Check that jq is installed; we use this tool to parse gcloud outputs.
 jq --help >/dev/null || (echo "jq is not installed, 'brew install jq' to get it." && exit 1)
 
@@ -18,16 +23,13 @@ if [[ -z "$RUBBISH_GEO_ENV" ]]; then
     echo "RUBBISH_GEO_ENV environment variable not set, exiting." && exit 1
 fi
 
-# Running this script creates a new backing database in your currently authenticated profile,
-# if one doesn't already exist. If one already does, runs the database migrations instead.
-
-# If an instance already exists, exit out.
 echo "Checking databases...💽"
-INSTANCE_NAME="rubbish-geo-postgis-db"
 SQL_INSTANCES=$(gcloud sql instances list)
-echo $SQL_INSTANCES | grep "$INSTANCE_NAME" 1>&0 && INSTANCE_EXISTS=0 || INSTANCE_EXISTS=1
+echo $SQL_INSTANCES | grep "rubbish-geo-postgis-db" 1>&0 && INSTANCE_EXISTS=0 || INSTANCE_EXISTS=1
 if [[ INSTANCE_EXISTS -eq 0 ]]; then
     echo "Database instance already exists, skipping ahead to configuration."
+    INSTANCE_NAME=$(gcloud sql instances list --format=json | \
+        jq -r '.[] | .name' | grep rubbish-geo-postgis-db)
 else
     echo "Database instance does not exist yet, creating now (this will take some time)..."
     gcloud sql instances create $INSTANCE_NAME \
@@ -36,28 +38,29 @@ else
         --region="us-west1"
     gcloud sql users set-password postgres --instance=$INSTANCE_NAME \
         --password=$RUBBISH_GEO_POSTGRES_USER_PASSWORD
+    INSTANCE_NAME="rubbish-geo-postgis-db-$RANDOM"
 fi
 
 echo "Configuring connection to the database instance...🔌"
 MY_IP=$(curl -s ifconfig.me)
 gcloud sql instances patch $INSTANCE_NAME --authorized-networks=$MY_IP --quiet
-INSTANCE_IP=$(gcloud sql instances describe rubbish-geo-postgis-db --format=json | \
+INSTANCE_IP=$(gcloud sql instances describe $INSTANCE_NAME --format=json | \
     jq -r '.ipAddresses[0].ipAddress')
 POSTGRES_DB_CONNSTR=postgresql://postgres:$RUBBISH_GEO_POSTGRES_USER_PASSWORD@$INSTANCE_IP/postgres
 RUBBISH_DB_CONNSTR=postgresql://postgres:$RUBBISH_GEO_POSTGRES_USER_PASSWORD@$INSTANCE_IP/rubbish
 RW_RUBBISH_DB_CONNSTR=postgresql://read_write:$RUBBISH_GEO_READ_WRITE_USER_PASSWORD@$INSTANCE_IP/rubbish
 
 echo "Checking if the instance has a Rubbish database...🗄️"
-INSTANCE_DBS=$(gcloud sql databases list --instance rubbish-geo-postgis-db --format=json | \
+INSTANCE_DBS=$(gcloud sql databases list --instance $INSTANCE_NAME --format=json | \
     jq -r '.[] | .name')
-echo $INSTANCE_DBS | grep "$INSTANCE_NAME" 1>&0 && DB_EXISTS=0 || DB_EXISTS=1
+echo $INSTANCE_DBS | grep "rubbish" 1>&0 && DB_EXISTS=0 || DB_EXISTS=1
 if [[ DB_EXISTS -eq 0 ]]; then
     echo "Rubbish database already exists, skipping ahead to migrations."
 else
     echo "Rubbish database does not exist yet, creating now..."
     psql $POSTGRES_DB_CONNSTR -c "CREATE DATABASE rubbish;"
     psql $RUBBISH_DB_CONNSTR -c "CREATE EXTENSION postgis;"
-    psql $RUBBISH_DB_CONNSTR -c "CREATE USER read_write WITH PASSWORD $RUBBISH_GEO_READ_WRITE_USER_PASSWORD;"
+    psql $RUBBISH_DB_CONNSTR -c "CREATE USER read_write WITH PASSWORD '$RUBBISH_GEO_READ_WRITE_USER_PASSWORD';"
 fi
 
 echo "Running database migrations...💩"
@@ -73,4 +76,4 @@ echo "Adding this database to your local database profiles...✏️"
 rubbish-admin set-db --profile $RUBBISH_GEO_ENV $RW_RUBBISH_DB_CONNSTR
 
 echo "Done! You can now connect to this database by running: "
-echo "\$ rubbish-admin connect --profile $RUBBISH_GEO_ENV $RW_RUBBISH_DB_CONNSTR"
+echo "\$ rubbish-admin connect --profile $RUBBISH_GEO_ENV"
