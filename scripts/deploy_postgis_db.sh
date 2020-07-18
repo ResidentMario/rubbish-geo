@@ -57,7 +57,7 @@ else
     echo "Rubbish database does not exist yet, creating now..."
     psql $POSTGRES_DB_CONNSTR -c "CREATE DATABASE rubbish;"
     psql $RUBBISH_DB_CONNSTR -c "CREATE EXTENSION postgis;"
-    psql $RUBBISH_DB_CONNSTR -c "CREATE USER read_write WITH PASSWORD '9rW8P4Jm7Sn';"
+    psql $RUBBISH_DB_CONNSTR -c "CREATE USER read_write WITH PASSWORD $RUBBISH_GEO_READ_WRITE_USER_PASSWORD;"
 fi
 
 echo "Running database migrations...💩"
