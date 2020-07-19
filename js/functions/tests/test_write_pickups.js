@@ -12,7 +12,7 @@ async function insertPickup(lat, long) {
         lat: lat,
         long: long,
         rubbishType: 'glass',
-        userTimeStamp: Date.now()
+        userTimeStamp: Math.floor(Date.now() / 1000)
     });
     return pickupID;
 }

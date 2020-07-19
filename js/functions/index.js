@@ -1,6 +1,6 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const https = require('https');
+const axios = require('axios');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -64,25 +64,17 @@ exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{run
           geometry: geometry
         };
       });
-      payload = JSON.stringify({firebaseID: payload});
-
-      console.log(payload);
-      console.log(private_api_endpoint_url);
-      return;
-
-      // TODO: make the HTTPS POST.
-      // https://flaviocopes.com/node-http-post/
-      // const options = {
-      //   hostname: 'flaviocopes.com',
-      //   port: 443,
-      //   path: '/todos',
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Content-Length': data.length
-      //   }
-      // }
+      payload = {firebaseID: payload}
       // console.log(payload);
-      // return;
+
+      // const client = axios.create({
+      //   baseURL: private_api_endpoint_url,
+      //   headers: { 'Content-Type': 'application/json' }
+      // })
+      // eslint-disable-next-line promise/no-nesting
+      return axios.post(private_api_endpoint_url, payload).then(resp => {
+        console.log(resp);
+        return;
+      });
     }));
   });

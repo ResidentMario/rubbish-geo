@@ -47,3 +47,5 @@ For instructions on starting the private API emulator refer to the `README` in t
 For instructions on starting the test PostGIS database refer to the `README` in the `python` folder.
 
 Assuming these conditions are satisfied, you can run the tests locally by executing `npm run-script test`.
+
+Note that tests are a bit janky at this time. If you navigate to the terminal you executed the function from and see an error message stating `"ValueError: No centerlines in the database!"`, that means that tests passed. 😅
