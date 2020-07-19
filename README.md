@@ -6,7 +6,7 @@ The `rubbish-geo` service provides a geospatial backend for the [Rubbish App](ht
 
 ## architecture
 
-![](https://i.imgur.com/FYMNKGz.png)
+![](https://i.imgur.com/a5Y5wQH.png)
 
 The [Rubbish iOS application](https://apps.apple.com/us/app/rubbish-love-where-you-live/id1374702632) is deployed via [Cloud Firestore](https://firebase.google.com/docs/firestore/), using a Firestore Firebase NoSQL database as its primary system of record. The client application is written in Swift, and the backend tooling in Node.JS. Importantly, the Firebase SDK is used for handling authentication between the client and the backend services.
 
