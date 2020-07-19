@@ -10,7 +10,9 @@ async function insertPickup(lat, long) {
     await db.collection('Story').doc(pickupID).set({
         photoStoryID: pickupID,
         lat: lat,
-        long: long
+        long: long,
+        rubbishType: 'glass',
+        userTimeStamp: Date.now()
     });
     return pickupID;
 }

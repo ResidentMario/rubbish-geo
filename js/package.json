@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "mocha functions/tests/"
+    "set:local-envars": "export NODE_ENV=local CLOUD_FUNCTIONS_EMULATOR_HOST=localhost:8080 FIRESTORE_EMULATOR_HOST=localhost:8081",
+    "emulators:start": "NODE_ENV=local CLOUD_FUNCTIONS_EMULATOR_HOST=localhost:8080 FIRESTORE_EMULATOR_HOST=localhost:8081 firebase emulators:start",
+    "test": "NODE_ENV=local CLOUD_FUNCTIONS_EMULATOR_HOST=localhost:8080 FIRESTORE_EMULATOR_HOST=localhost:8081 mocha functions/tests/"
   },
   "repository": {
     "type": "git",

@@ -27,6 +27,8 @@ const db = admin.firestore();
 // }
 
 (async () => {
+    const runID = '123';
+    const pickupIDs = ['345', '567'];
     const res = await db.collection('RubbishRunStory').doc(runID).get({
         startLat: 0,
         startLong: 0,
