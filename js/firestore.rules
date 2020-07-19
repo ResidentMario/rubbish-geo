@@ -1,0 +1,233 @@
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+  	function getData(path) {
+     return get(path).data || get(path);
+    }
+
+  	function isAuthenticated() {
+      return request.auth.uid != null;
+    }
+
+    function isAdmin() {
+      return hasAdminRole() && isInAdminWhiteList();
+    }
+    
+    function hasAdminRole() {
+      return get(/databases/$(database)/documents/User/$(request.auth.uid)).data.userRole == 'admin';
+    }
+    
+    function isInAdminWhiteList() {
+    		return request.auth.uid in [
+          "dNOINMQXS4X1LOCwH6farqHZhgF2", // emin@rubbish.love
+          "CoppjTojj2VbamG5uwhMczbV8Di1", // eminisrafil@gmail.com
+          "imuaFlvOqDUjJlnHLAlYBzHHutF2",  // anthony.victorio@gmail.com
+          "K4EQFB0ip5cKsSbuzL2lcCnfzu92", // adamisrafil@gmail.com
+          "WVuhKZJrq2NlNB6botmxSNpxKU73", // elenaguberman@gmail.com
+          "vIdWwCvLtxWtAYXec0nYCVfAtmp1",  // melifelipe@comcast.net
+          "fYeYp8lW31SnU0ecFqKmlH7a0LY2",  // keepevets@gmail.com
+					"QvC6jDFKbcXwBNmSs9VSMDCvv112",  // keepevets@dev
+          "TtvrNFOwcMcxX4tttmJUGORv6Od2",
+          "4Nv13wIZO8Q5h8td35FapgDwSY12" // aydinrubbishtest@gmail.com
+        ];
+    }
+
+		// Doesn't actually guarentee it's the owner. 
+		// It guarentee's that they are editing with their userID.
+    function isActingOnBehalfOfSelf() {
+    	return request.auth.uid == request.resource.data.userID;  
+    }
+    
+    function isOwnerOfExistingObject() {
+    	return request.auth.uid == resource.data.userID; 
+    }
+    
+    match /Community/{community=**} {
+      allow get: if isAuthenticated();
+      allow list: if isAuthenticated(); 
+      allow update: if isAuthenticated() && isAdmin();
+      allow create, delete: if isAdmin();
+    }
+
+    match /Step/{step} {
+      allow get: if isAuthenticated();
+      allow list: if isAuthenticated();
+      allow create, update, delete: if isOwner() || isAdmin();
+    }
+
+    match /Story/{story} {      
+      allow get: if isAuthenticated(); 
+      allow list: if isAuthenticated(); 
+      allow create: if isAuthenticated() && (isActingOnBehalfOfSelf() || isAdmin());
+      allow update: if isAuthenticated() && (isOwnerOfExistingObject() || isAdmin());
+      allow delete: if isAuthenticated() && (isOwnerOfExistingObject() || isAdmin()); // double check
+    }
+
+    match /User/{user} {
+      allow get: if isAuthenticated(); 
+      allow list: if isAuthenticated();
+      allow update: if isAuthenticated()
+        && (
+          isOwnerOfExistingObject() // allow owner
+          || lockCertainUserFields() // allow non-owner so long as locked fields are unchanged
+          || isAdmin() // temporarily allow admins
+        );
+      allow create: if isAuthenticated() && (isActingOnBehalfOfSelf() || isAdmin());
+      allow delete: if isAuthenticated() && isAdmin();
+      
+      function lockCertainUserFields() {
+    		return request.resource.data.userID == resource.data.userID
+			      && request.resource.data.firstName == resource.data.firstName
+            && request.resource.data.lastName == resource.data.lastName
+            && request.resource.data.userNameLowerCase == resource.data.userNameLowerCase
+            // && request.resource.data.email == resource.data.email This needs update. Email is now in PrivateCollection Sept 2019
+            // && request.resource.data.photoURL == resource.data.photoURL This needs update photosURL can now be nil. Sept 2019
+            && request.resource.data.userRole == resource.data.userRole
+            && request.resource.data.userActivationStatus == resource.data.userActivationStatus
+            && request.resource.data.numberOfPictures == resource.data.numberOfPictures;
+    	}
+    }
+    
+    match /UserPrivateData/{userPrivateData} {
+			allow get: if isAuthenticated() && (isOwnerOfExistingObject() || isAdmin()); 
+      allow list: if isAuthenticated() && isAdmin(); 
+      allow update: if isAuthenticated() 
+      	&& (
+        	(isOwnerOfExistingObject() && lockCertainUserFields()) 
+          || isAdmin()
+        );
+      allow create: if isAuthenticated() && (isActingOnBehalfOfSelf() || isAdmin());
+      allow delete: if isAdmin();
+      
+      function lockCertainUserFields() {
+    			return request.resource.data.userID == resource.data.userID
+    	}
+    }
+    
+    match /RubbishRunStory/{RubbishRunStory} {
+      allow get: if isAuthenticated() && (isActingOnBehalfOfSelf() || isAdmin());  // this needs to be updated to be more secure
+      allow list: if isAuthenticated(); // this needs to be updated to be more secure
+      allow update: if isAuthenticated() 
+      	&& (
+        	(isActingOnBehalfOfSelf() && isOwnerOfExistingObject()) 
+          || isAdmin()
+        );
+      allow create: if isAuthenticated() && (isActingOnBehalfOfSelf() || isAdmin());
+      allow delete: if isAuthenticated() && isAdmin(); // double check
+    }
+    
+    match /Team/{Team} {
+      allow get;
+      allow list; 
+      allow update: if isAuthenticated() 
+      	&& (
+        	(isActingOnBehalfOfSelf()) 
+          || isAdmin()
+        );
+      allow create: if isAuthenticated() && isAdmin();
+      allow delete: if isAuthenticated() && isAdmin(); // double check
+    }
+    
+    match /Open311Log/{open311Log} {      
+      allow get: if isAuthenticated(); 
+      allow list: if isAuthenticated(); 
+      allow create: if isAuthenticated() && (isActingOnBehalfOfSelf() || isAdmin());
+      allow update: if isAuthenticated() && isOwnerOfExistingObject()
+      allow delete: if isAuthenticated() && isAdmin(); // double check
+    }
+      
+    match /LitterPerksSubscriber/{litterPerksSubscriber} {
+			allow get: if isAuthenticated() && (isOwnerOfExistingObject() || isAdmin()); 
+      allow list: if isAuthenticated() && isAdmin(); 
+      allow update: if isAuthenticated() && isAdmin(); 
+      allow create: if isAuthenticated() && (isActingOnBehalfOfSelf() || isAdmin());
+      allow delete: if isAdmin();
+    }
+    
+    match /QrCode/{qrCode} {      
+      allow get; 
+      allow list: if isAuthenticated() && isAdmin(); 
+      allow create: if isAuthenticated() && isAdmin();
+      allow update: if isAuthenticated() && isAdmin();
+      allow delete: if isAuthenticated() && isAdmin(); // double check
+    }
+    match /QrCodeReport/{qrCodeReport} {      
+      allow get: if isAuthenticated();  
+      allow list: if isAuthenticated(); 
+      allow create;
+      allow update;
+      allow delete: if isAuthenticated() && isAdmin(); // double check
+    }
+    match /QrCodeSubscriber/{qrCodeSubscriber} {      
+      allow get;  
+      allow list: if isAuthenticated(); 
+      allow create: if isAuthenticated() && isAdmin(); 
+      allow update: if isAuthenticated() && isAdmin();
+      allow delete: if isAuthenticated() && isAdmin(); // double check
+    }
+    match /QRTrashCans/{qrTrashCans} {      
+      allow get; 
+      allow list: if isAuthenticated() && isAdmin(); 
+      allow create: if isAuthenticated() && isAdmin();
+      allow update: if isAuthenticated() && isAdmin();
+      allow delete: if isAuthenticated() && isAdmin(); // double check
+    }
+    
+    match /QRTrashReports/{qrTrashReports} {      
+      allow get: if isAuthenticated(); 
+      allow list: if isAuthenticated() && isAdmin(); 
+      allow create: if isAuthenticated() && isAdmin();
+      allow update: if isAuthenticated() && isAdmin();
+      allow delete: if isAuthenticated() && isAdmin(); // double check
+    }
+    
+    match /QRCodeDefaults/{qrCodeDefaults} {      
+      allow get: if isAuthenticated(); 
+      allow list: if isAuthenticated() && isAdmin(); 
+      allow create: if isAuthenticated() && isAdmin();
+      allow update: if isAuthenticated() && isAdmin();
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+    
+    match /Movement/{movement} {      
+      allow get: if isAuthenticated(); 
+      allow list: if isAuthenticated(); 
+      allow create: if isAuthenticated() && (isActingOnBehalfOfSelf() || isAdmin());
+      allow update: if isAuthenticated() && (isOwnerOfExistingObject() || isAdmin());
+      allow delete: if isAuthenticated() && isAdmin(); 
+    }
+    
+    match /RubbishTypes/{rubbishTypes} {      
+      allow get; 
+      allow list; 
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (isOwnerOfExistingObject() || isAdmin());
+      allow delete: if isAuthenticated() && isAdmin(); 
+    }
+    
+    match /RubbishTypeDefaultScheme/{rubbishTypeDefaultScheme} {      
+      allow get: if isAuthenticated(); 
+      allow list: if isAuthenticated(); 
+      allow create: if isAuthenticated() && isAdmin();
+      allow update: if isAuthenticated() && isAdmin();
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+    
+    match /RubbishUserTypesScheme/{rubbishUserTypesScheme} {      
+      allow get: if isAuthenticated(); 
+      allow list: if isAuthenticated(); 
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+    
+    match /RubbishTeamTypesScheme/{rubbishTeamTypesScheme} {      
+      allow get; 
+      allow list; 
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+  }
+}
+
