@@ -77,3 +77,4 @@ rubbish-admin set-db --profile $RUBBISH_GEO_ENV $RW_RUBBISH_DB_CONNSTR
 
 echo "Done! You can now connect to this database by running: "
 echo "\$ rubbish-admin connect --profile $RUBBISH_GEO_ENV"
+echo "To connect directly, use the following database connection string: $RW_RUBBISH_DB_CONNSTR."
