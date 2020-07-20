@@ -1,6 +1,12 @@
 const admin = require('firebase-admin');
 const uuid4 = require('uuid').v4;
-// const assert = require('assert');
+
+// Use a static runID for local testing, and a randomly generated one for remote testing.
+const rubbishGeoEnv = process.env.RUBBISH_GEO_ENV;
+if (rubbishGeoEnv === undefined) {
+    throw Error('RUBBISH_GEO_ENV environment variable is not set.')
+}
+const runID = rubbishGeoEnv === 'local' ? 'f976f9cb-ecc5-4613-93e0-6327536cd684' : uuid4();
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -30,8 +36,6 @@ async function insertRun(runID, pickupIDs) {
 }
 
 async function insertExampleRun() {
-    // const runID = uuid4();
-    const runID = 'f976f9cb-ecc5-4613-93e0-6327536cd684';
     const pickupIDs = [];
 
     const n_points = 10;
@@ -44,8 +48,8 @@ async function insertExampleRun() {
     insertRun(runID, pickupIDs);
 }
 
-describe('Test Function Write', () => {
-    it('Does the thing!', () => {
+describe('writing a run to the database', () => {
+    it(`succeeds (with runID ${runID}).`, () => {
         insertExampleRun();
     });
 });

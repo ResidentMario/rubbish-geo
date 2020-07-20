@@ -66,3 +66,6 @@ node_modules/
 
 # NOTE(aleksey): runtime config secrets
 .runtimeconfig.json
+
+# NOTE(aleksey): service account admin SDK private key
+serviceAccountKey.json
