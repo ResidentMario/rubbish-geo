@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "emulators:start": "CLOUD_FUNCTIONS_EMULATOR_HOST=http://localhost:8080 FIRESTORE_EMULATOR_HOST=localhost:8081 firebase emulators:start",
+    "emulators:start": "RUBBISH_GEO_ENV=local CLOUD_FUNCTIONS_EMULATOR_HOST=http://localhost:8080 FIRESTORE_EMULATOR_HOST=localhost:8081 firebase emulators:start",
     "test:local": "RUBBISH_GEO_ENV=local CLOUD_FUNCTIONS_EMULATOR_HOST=http://localhost:8080 FIRESTORE_EMULATOR_HOST=localhost:8081 mocha functions/tests/",
     "test:dev": "pushd ../ && GOOGLE_APPLICATION_CREDENTIALS=$PWD/js/serviceAccountKey.json && popd && RUBBISH_GEO_ENV=dev mocha functions/tests/",
     "test": "npm run-script test:local"
