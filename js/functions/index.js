@@ -11,13 +11,7 @@ const db = admin.firestore();
 // variables directly, unfortunately).
 let private_api_endpoint_url = null;
 if (process.env.RUBBISH_GEO_ENV === "local") {
-  private_api_endpoint_url = process.env.CLOUD_FUNCTIONS_EMULATOR_HOST;
-  if (private_api_endpoint_url === undefined) {
-    throw new Error(
-      `CLOUD_FUNCTIONS_EMULATOR_HOST environment variable is not set. This value must point to ` +
-      `the private API HTTPS endpoint when running locally.`
-    )
-  }
+  private_api_endpoint_url = "localhost:8081";
 } else {
   private_api_endpoint_url = functions.config().private_api.post_pickups_url;
   if (private_api_endpoint_url  === undefined) {
@@ -67,6 +61,8 @@ exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{run
       });
       payload = {firebaseID: payload}
 
+      functions.logger.info(private_api_endpoint_url);
+      functions.logger.info(payload);
       // eslint-disable-next-line promise/no-nesting
       return axios.post(private_api_endpoint_url, payload).then(resp => {
         functions.logger.info(
