@@ -6,7 +6,7 @@
   "scripts": {
     "emulators:start": "RUBBISH_GEO_ENV=local firebase emulators:start",
     "test:local": "RUBBISH_GEO_ENV=local FIRESTORE_EMULATOR_HOST=localhost:8080 firebase emulators:exec ../scripts/launch_auth_proxy_tests.sh",
-    "test:dev": "pushd ../ && GOOGLE_APPLICATION_CREDENTIALS=$PWD/js/serviceAccountKey.json && popd && RUBBISH_GEO_ENV=dev mocha functions/tests/",
+    "test:dev": "pushd ../ && GOOGLE_APPLICATION_CREDENTIALS=$PWD/js/serviceAccountKey.json && popd && RUBBISH_GEO_ENV=dev echo NOT YET IMPLEMENTED",
     "test": "npm run test:local"
   },
   "repository": {
@@ -20,10 +20,9 @@
   },
   "homepage": "https://github.com/ResidentMario/rubbish-api-service#readme",
   "devDependencies": {
-    "chai": "^4.2.0",
     "firebase-admin": "^8.13.0",
-    "mocha": "^8.0.1",
-    "uuid": "^8.2.0"
+    "uuid": "^8.2.0",
+    "serialize-javascript": ">=3.1.0"
   },
   "dependencies": {
     "axios": "^0.19.2"
