@@ -24,9 +24,6 @@ if (process.env.RUBBISH_GEO_ENV === "local") {
 
 
 // Listens for new runs inserted into /RubbishRunStory/:runID.
-// TODO: rename the cloud function and client package fields to match Firestore names exactly.
-// This would make the code more readable for those most familiar with the Firestore values
-// (mainly Emin).
 exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{runID}')
   .onCreate((snap, context) => {
     const rubbishRunStory = snap.data();
@@ -34,8 +31,6 @@ exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{run
     const photoStoryPromises = [];
     for (let photoStoryIDEnum in rubbishRunStory.photoStoryIDs) {
       let photoStoryID = rubbishRunStory.photoStoryIDs[photoStoryIDEnum]
-      // console.log(photoStoryIDEnum);
-      // console.log(photoStoryID);
       photoStoryPromises.push(db.collection('Story').doc(photoStoryID).get());
     }
     let firebaseRunID = null;
@@ -61,8 +56,6 @@ exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{run
       });
       payload = {firebaseID: payload}
 
-      // functions.logger.info(private_api_endpoint_url);
-      // functions.logger.info(payload);
       // eslint-disable-next-line promise/no-nesting
       return axios.post(private_api_endpoint_url, payload).then(resp => {
         functions.logger.info(
