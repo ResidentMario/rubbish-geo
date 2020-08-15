@@ -51,7 +51,7 @@ fi
 
 # Finally we are ready to deploy our functions.
 echo "Deploying cloud functions...⚙️"
-for FNAME in POST_pickups GET_radial GET_sector GET_coord GET_run
+for FNAME in POST_pickups GET
 do
     gcloud functions deploy $FNAME \
         --ingress-settings=internal-only \
