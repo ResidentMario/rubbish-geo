@@ -114,3 +114,27 @@ def GET_run(request):
     run_id = args['run_id']
 
     return {"blockfaces": run_get(run_id)}
+
+def GET(request):
+    """
+    This function is the user-facing part of the function. It passes its input to the correct GET
+    method. Requests are multiplexed behind this method to reduce cold start time.
+    """
+    args = request.args
+    if 'request_type' not in args:
+        raise ValueError("This request is missing the required 'request_type' URL parameter.")
+    
+    t = args['request_type']
+    if t == 'run':
+        return GET_run(request)
+    elif t == 'sector':
+        return GET_sector(request)
+    elif t == 'coord':
+        return GET_coord(request)
+    elif t == 'radial':
+        return GET_radial(request)
+    else:
+        raise ValueError(
+            f"Received request with invalid 'request_type' value {t!r}. 'request_type' must be "
+            f"one of 'run', 'sector', 'coord', or 'radial'."
+        )

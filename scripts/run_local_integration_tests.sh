@@ -21,16 +21,22 @@ export RUBBISH_POSTGIS_CONNSTR="postgresql://rubbish-test-user:polkstreet@localh
 functions-framework --source $RUBBISH_BASE_DIR/python/functions/main.py \
     --port 8081 --target POST_pickups --debug &
 
+echo "Starting private API GET emulator..."
+functions-framework --source $RUBBISH_BASE_DIR/python/functions/main.py \
+    --port 8082 --target GET --debug &
+
 echo "Sleeping for five seconds to give the emulators time to start up..."
 sleep 5
 
 echo "Running private API integration test..."
-pytest $RUBBISH_BASE_DIR/python/functions/tests/tests.py -k POST_pickups || \
-    (kill -s SIGSTOP %1 && exit 1)
+PRIVATE_API_EMULATOR_HOST="http://localhost:8081" \
+    pytest $RUBBISH_BASE_DIR/python/functions/tests/tests.py -k POST_pickups
+
+PRIVATE_API_EMULATOR_HOST="http://localhost:8082" \
+    pytest $RUBBISH_BASE_DIR/python/functions/tests/tests.py -k GET
 
 echo "Starting authentication API emulator and running authentication proxy integration test..."
-npm run-script --prefix $RUBBISH_BASE_DIR/js/ test:local || \
-    (kill -s SIGSTOP %1 && exit 1)
+npm run-script --prefix $RUBBISH_BASE_DIR/js/ test:local
 
 echo "Shutting down emulators..."
-kill -s SIGSTOP %1
+kill -s SIGSTOP %1 %2

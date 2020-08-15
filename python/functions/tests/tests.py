@@ -112,7 +112,7 @@ class Test_GET_radial(unittest.TestCase):
     @insert_grid
     def testGetZero(self):
         response = requests.get(
-            f"{F_URL}?x=0&y=0&distance=0&include_na=False&offset=0"
+            f"{F_URL}?request_type=radial&x=0&y=0&distance=0&include_na=False&offset=0"
         )
         response.raise_for_status()
         assert response.json() is not None
@@ -125,7 +125,7 @@ class Test_GET_radial(unittest.TestCase):
         write_pickups(pickups)
 
         response = requests.get(
-            f"{F_URL}?x=0&y=0&distance=1&include_na=False&offset=0"
+            f"{F_URL}?request_type=radial&x=0&y=0&distance=1&include_na=False&offset=0"
         )
         response.raise_for_status()
         result = response.json()
@@ -143,7 +143,7 @@ class Test_GET_radial(unittest.TestCase):
         write_pickups(pickups)
 
         response = requests.get(
-            f"{F_URL}?x=0&y=0&distance=1&include_na=False&offset=0"
+            f"{F_URL}?request_type=radial&x=0&y=0&distance=1&include_na=False&offset=0"
         )
         response.raise_for_status()
         result = response.json()
@@ -167,7 +167,7 @@ class Test_GET_sector(unittest.TestCase):
         write_pickups(pickups)
 
         response = requests.get(
-            f"{F_URL}?sector_name=Polygon%20Land&include_na=False&offset=0"
+            f"{F_URL}?request_type=sector&sector_name=Polygon%20Land&include_na=False&offset=0"
         )
         response.raise_for_status()
         result = response.json()
@@ -187,7 +187,7 @@ class Test_GET_coord(unittest.TestCase):
         pickups = valid_pickups_from_geoms([Point(0.1, 0), Point(0.9, 0)], curb='left')
         write_pickups(pickups)
 
-        response = requests.get(f"{F_URL}?x=0&y=0&include_na=False&offset=0")
+        response = requests.get(f"{F_URL}?request_type=coord&x=0&y=0&include_na=False&offset=0")
         response.raise_for_status()
         result = response.json()
 
@@ -204,7 +204,7 @@ class Test_GET_run(unittest.TestCase):
         )
         write_pickups(pickups)
 
-        response = requests.get(f"{F_URL}?run_id=foo")
+        response = requests.get(f"{F_URL}?request_type=run&run_id=foo")
         response.raise_for_status()
         result = response.json()
 
