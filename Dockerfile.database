@@ -3,7 +3,7 @@ FROM postgis/postgis:12-3.0
 RUN apt-get update && \
     apt-get -y install python3-pip && \
     python3 -m pip install --no-cache-dir psycopg2-binary sqlalchemy geoalchemy2
-ENV CONNSTR=postgresql://rubbish-test-user@localhost:5432/rubbish
+ENV CONNSTR=postgresql://rubbish-test-user:polkstreet@localhost:5432/rubbish
 # NOTE: migration must be run manually after last step:
 # $ docker exec -it $CONTAINER_NAME alembic -c test_alembic.ini upgrade head
 # This is considered acceptable practice: https://stackoverflow.com/a/51926141/1993206

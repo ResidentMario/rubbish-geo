@@ -1,10 +1,6 @@
 #!/bin/bash
+# Run this script to deploy or redeploy the PostGIS database.
 set -e
-
-# Running this script creates a new backing database in your currently authenticated profile,
-# if one doesn't already exist. If one already does, runs the database migrations instead.
-#
-# NOTE(aleksey): instance names are reserved for up to a week after an instance is deleted.
 
 # Check that jq is installed; we use this tool to parse gcloud outputs.
 jq --help >/dev/null || (echo "jq is not installed, 'brew install jq' to get it." && exit 1)
@@ -38,6 +34,7 @@ else
         --region="us-west1"
     gcloud sql users set-password postgres --instance=$INSTANCE_NAME \
         --password=$RUBBISH_GEO_POSTGRES_USER_PASSWORD
+    # NOTE(aleksey): instance names are reserved for a while even after deletion, thus the $RANDOM.
     INSTANCE_NAME="rubbish-geo-postgis-db-$RANDOM"
 fi
 

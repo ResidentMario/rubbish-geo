@@ -5,26 +5,20 @@ const axios = require('axios');
 admin.initializeApp();
 const db = admin.firestore();
 
-// NOTE(aleksey): cloud functions do not support environment variables, using project-wide
-// configuration variables instead. For testing purposes, we set NODE_ENV to local in local tests
-// (which use the emulator) and interpret the lack a NODE_ENV environment variable as prod
-// (which uses the live cloud function).
+// NOTE(aleksey): to make the HTTP request, we must know the endpoint URL. When running in local,
+// this value is set by an environment variable. When running in dev or prod, this value is set by
+// a (project-wide) Firebase configuration variable (firebase functions do not support environment
+// variables directly, unfortunately).
 let private_api_endpoint_url = null;
-if (process.env.NODE_ENV === "local") {
-  private_api_endpoint_url = process.env.CLOUD_FUNCTIONS_EMULATOR_HOST;
-  if (private_api_endpoint_url === undefined) {
-    throw new Error(`
-      CLOUD_FUNCTIONS_EMULATOR_HOST environment variable is not set. This value must point to the
-      private API HTTPS endpoint when running locally.
-    `)
-  }
+if (process.env.RUBBISH_GEO_ENV === "local") {
+  private_api_endpoint_url = "http://localhost:8081";
 } else {
   private_api_endpoint_url = functions.config().private_api.post_pickups_url;
   if (private_api_endpoint_url  === undefined) {
-    throw new Error(`
-      private_api.post_pickups_url environment configuration variable is not set. Did you forget
-      to set it? For more information refer to the "configuration" section in the README.
-    `)
+    throw new Error(
+      `private_api.post_pickups_url environment configuration variable is not set. Did you forget` +
+      `to set it? For more information refer to the "configuration" section in the README.`
+    )
   }
 }
 
@@ -40,14 +34,15 @@ exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{run
     const photoStoryPromises = [];
     for (let photoStoryIDEnum in rubbishRunStory.photoStoryIDs) {
       let photoStoryID = rubbishRunStory.photoStoryIDs[photoStoryIDEnum]
-      console.log(photoStoryIDEnum);
-      console.log(photoStoryID);
+      // console.log(photoStoryIDEnum);
+      // console.log(photoStoryID);
       photoStoryPromises.push(db.collection('Story').doc(photoStoryID).get());
     }
+    let firebaseRunID = null;
     return Promise.all(photoStoryPromises).then((photoStories => {
       let payload = photoStories.map(photoStory => {
         const photoStoryData = photoStory.data();
-        const firebaseRunID = photoStoryData.photoStoryID;
+        firebaseRunID = photoStoryData.photoStoryID;
         const type = photoStoryData.rubbishType;
         const timestamp = photoStoryData.userTimeStamp;
         // Documents that preexist the development of this service lack the curb prop.
@@ -65,16 +60,20 @@ exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{run
         };
       });
       payload = {firebaseID: payload}
-      // console.log(payload);
 
-      // const client = axios.create({
-      //   baseURL: private_api_endpoint_url,
-      //   headers: { 'Content-Type': 'application/json' }
-      // })
+      // functions.logger.info(private_api_endpoint_url);
+      // functions.logger.info(payload);
       // eslint-disable-next-line promise/no-nesting
       return axios.post(private_api_endpoint_url, payload).then(resp => {
-        console.log(resp);
+        functions.logger.info(
+          `proxy_POST_pickups POST of the run with firebaseRunID ${firebaseRunID} was successful.`
+        );
         return;
-      });
+      }).catch((err) =>
+        functions.logger.error(
+          `The proxy_POST_pickups authentication proxy failed to POST to the ` +
+          `POST_pickups private API endpoint: `, err
+        )
+      );
     }));
   });

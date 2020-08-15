@@ -23,7 +23,8 @@ We hope to use it to eventually build out a community "trash map", helping organ
 │   ├── deploy_postgis_db.sh  <- Database deploy and/or migration script.
 │   ├── deploy_private_api.sh <- Deploys the cloud function private API.
 │   ├── deploy_private_api.sh <- Deploys the cloud function private API.
-│   └── deploy_auth_proxy.sh  <- Deploys the firebase functions auth proxy.
+│   ├── deploy_auth_proxy.sh  <- Deploys the firebase functions auth proxy.
+│   └── run_local_integration_tests.sh  <- Runs integration tests locally.
 ├── js/
 │   └── functions/            <- Authentication proxy function code.
 ├── Dockerfile.database       <- Dockerfile bundling the local test db.
@@ -85,6 +86,8 @@ Instructions on how to run local tests for each of the major components are incl
 
 PRs are automatically tested using Travis CI (though this is currently disabled unfortunately).
 
-This section discusses the (manual) integration test.
+Local unit tests can be run using `run_local_unit_tests.sh` in `scripts/`.
 
-Make sure you have [a Firestore admin SDK token](https://firebase.google.com/docs/admin/setup#initialize-sdk) written to the `serviceAccountKey.json` file in the `js/` directory; you will need to this to connect to Firestore from your local machine. Then navigate to the `js/` directory and run `npm run-script test:dev`. This will write a test run to the database; to make sure that it did what you wanted it to do, check the logs in the GCP web console.
+Local integration tests can be run using `run_local_integration_tests.sh` in `scripts/`
+
+Remote integration tests are under active development and not yet available.

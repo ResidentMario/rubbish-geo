@@ -19,8 +19,8 @@ from rubbish_geo_common.test_utils import (
 from rubbish_geo_admin import insert_sector
 from rubbish_geo_client.ops import write_pickups
 
-F_URL = "http://localhost:8080" if "FUNCTION_SERVICE_URL" not in os.environ\
-    else os.environ["FUNCTION_SERVICE_URL"]
+F_URL = "http://localhost:8081" if "PRIVATE_API_EMULATOR_HOST" not in os.environ\
+    else os.environ["PRIVATE_API_EMULATOR_HOST"]
 
 class Test_POST_pickups(unittest.TestCase):
     @clean_db

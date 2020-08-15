@@ -27,32 +27,18 @@ To test that this installed successfully, try running `rubbish-admin --help`&mda
 
 ## testing
 
-You will need to have Docker installed and running locally. Then, run the following from repo root to initialize a local DB instance:
+Before you can run the tests for the first time, you will first need to build the database Docker image:
 
 ```bash
 $ docker build --file Dockerfile.database --tag rubbish-db .
-$ docker run -d \
-    --name rubbish-db-container \
-    -e POSTGRES_DB=rubbish \
-    -e POSTGRES_USER=rubbish-test-user \
-    -e POSTGRES_PASSWORD=polkstreet \
-    -p 5432:5432 rubbish-db:latest
-$ docker exec -it rubbish-db-container alembic -c test_alembic.ini upgrade head
 ```
 
-This creates a PostGIS database listening on the port 5432 and runs the database migration on it to populate the database.
-
-Assuming you have `psql` installed locally, you can verify that things are working as expected by running:
+After this you can run the Python unit tests via:
 
 ```bash
-$ psql -U rubbish-test-user -h localhost -p 5432 rubbish
+$ /scripts/run_local_unit_tests.sh
 ```
 
-Finally, to run the tests:
+## migrations
 
-```bash
-$ pytest python/rubbish_geo_client/tests/tests.py
-$ pytest python/rubbish_geo_admin/tests/tests.py
-```
-
-Note: you will need to rebuild the container (with `--no-cache` set) every time you update the database migrations.
+Note that you will need to rebuild the container with `--no-cache` set every time you update the database migrations.
