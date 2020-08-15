@@ -19,8 +19,60 @@ from rubbish_geo_common.test_utils import (
 from rubbish_geo_admin import insert_sector
 from rubbish_geo_client.ops import write_pickups
 
-F_URL = "http://localhost:8081" if "PRIVATE_API_EMULATOR_HOST" not in os.environ\
-    else os.environ["PRIVATE_API_EMULATOR_HOST"]
+import firebase_admin
+import firebase_admin.auth
+
+# A "Firebase ID token" is a user-identifying token that is used for user auth inside the Firebase
+# ecosystem. A "Firebase custom token" is an application-identifying token that is used for project
+# auth inside of the Firebase project.
+# 
+# Firebase provides a verify_id_token method for verifying ID tokens but no equivalent for minting
+# them. The private API expects this token to be set (for user authentication and security
+# purposes). This means that we have to deploy an advanced pattern from the follow SO thread:
+# https://stackoverflow.com/q/41989345/1993206. The answers here are out of date due to recent
+# deprecations on Google's end, but do lead to the correction solution here:
+# https://cloud.google.com/identity-platform/docs/use-rest-api#section-verify-custom-token.
+#
+# Basically we mint a custom token, then use an API call to Google's identity service to reverse
+# lookup the id token.
+#
+# Note that this user will show up in Firebase's authentication console as a new user (with user 
+# UID 'polkstreet'): https://console.firebase.google.com/project/PROJECT/authentication/users.
+if "GOOGLE_APPLICATION_CREDENTIALS" not in os.environ:
+    raise ValueError(
+        "The 'GOOGLE_APPLICATION_CREDENTIALS' environment variable must be set and must point "
+        "to your local service account file. For instructions on what to do, refer to: "
+        "https://firebase.google.com/docs/admin/setup#initialize-sdk."
+    )
+if "WEB_API_KEY" not in os.environ:
+    raise ValueError(
+        "The 'WEB_API_KEY' environment variable must be set to your project's web API key. "
+        "This value may be read from the settings page for your project: "
+        "https://console.firebase.google.com/project/_/settings/general."
+        "To learn more about GCP API keys refer to: "
+        "https://cloud.google.com/docs/authentication/api-keys?visit_id=637331240698538048-645747484&rd=1"
+    )
+
+# with open(os.environ["GOOGLE_APPLICATION_CREDENTIALS"], "r") as f:
+#     cfg = json.load(f)
+# DATABASE_URL = cfg["project_id"]
+# PRIVATE_KEY = cfg["private_key"]
+WEB_API_KEY = os.environ["WEB_API_KEY"]
+
+app = firebase_admin.initialize_app()
+custom_token = firebase_admin.auth.create_custom_token('polkstreet').decode('utf8')
+id_token = requests.post(
+    f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key={WEB_API_KEY}",
+    {'token': custom_token, 'returnSecureToken': True}
+).json()["idToken"]
+print(id_token)
+
+headers = {"Authorization": f"Bearer {id_token}"}
+
+if "PRIVATE_API_EMULATOR_HOST" not in os.environ:
+    F_URL = "http://localhost:8081"
+else:
+    F_URL = os.environ["PRIVATE_API_EMULATOR_HOST"]
 
 class Test_POST_pickups(unittest.TestCase):
     @clean_db
@@ -112,7 +164,8 @@ class Test_GET_radial(unittest.TestCase):
     @insert_grid
     def testGetZero(self):
         response = requests.get(
-            f"{F_URL}?request_type=radial&x=0&y=0&distance=0&include_na=False&offset=0"
+            f"{F_URL}?request_type=radial&x=0&y=0&distance=0&include_na=False&offset=0",
+            headers=headers
         )
         response.raise_for_status()
         assert response.json() is not None
@@ -125,7 +178,8 @@ class Test_GET_radial(unittest.TestCase):
         write_pickups(pickups)
 
         response = requests.get(
-            f"{F_URL}?request_type=radial&x=0&y=0&distance=1&include_na=False&offset=0"
+            f"{F_URL}?request_type=radial&x=0&y=0&distance=1&include_na=False&offset=0",
+            headers=headers
         )
         response.raise_for_status()
         result = response.json()
@@ -143,7 +197,8 @@ class Test_GET_radial(unittest.TestCase):
         write_pickups(pickups)
 
         response = requests.get(
-            f"{F_URL}?request_type=radial&x=0&y=0&distance=1&include_na=False&offset=0"
+            f"{F_URL}?request_type=radial&x=0&y=0&distance=1&include_na=False&offset=0",
+            headers=headers
         )
         response.raise_for_status()
         result = response.json()
@@ -167,7 +222,8 @@ class Test_GET_sector(unittest.TestCase):
         write_pickups(pickups)
 
         response = requests.get(
-            f"{F_URL}?request_type=sector&sector_name=Polygon%20Land&include_na=False&offset=0"
+            f"{F_URL}?request_type=sector&sector_name=Polygon%20Land&include_na=False&offset=0",
+            headers=headers
         )
         response.raise_for_status()
         result = response.json()
@@ -187,7 +243,10 @@ class Test_GET_coord(unittest.TestCase):
         pickups = valid_pickups_from_geoms([Point(0.1, 0), Point(0.9, 0)], curb='left')
         write_pickups(pickups)
 
-        response = requests.get(f"{F_URL}?request_type=coord&x=0&y=0&include_na=False&offset=0")
+        response = requests.get(
+            f"{F_URL}?request_type=coord&x=0&y=0&include_na=False&offset=0",
+            headers=headers
+        )
         response.raise_for_status()
         result = response.json()
 
@@ -204,7 +263,7 @@ class Test_GET_run(unittest.TestCase):
         )
         write_pickups(pickups)
 
-        response = requests.get(f"{F_URL}?request_type=run&run_id=foo")
+        response = requests.get(f"{F_URL}?request_type=run&run_id=foo", headers=headers)
         response.raise_for_status()
         result = response.json()
 
