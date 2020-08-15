@@ -1,6 +1,5 @@
 const admin = require('firebase-admin');
 const uuid4 = require('uuid').v4;
-// const assert = require('assert');
 
 // Use a static runID for local testing, and a randomly generated one for remote testing.
 const rubbishGeoEnv = process.env.RUBBISH_GEO_ENV;
@@ -49,16 +48,12 @@ async function insertExampleRun() {
   insertRun(runID, pickupIDs);
 }
 
-// TODO: rewrite as not a mocha test b/c its not really a test
 // TODO: wouldn't "check firestore-debug.log" be a better recommendation for local?
-describe('writing a run to the database', () => {
-  it(`succeeds (with runID ${runID}).`, async () => {
-    await insertExampleRun();
-    console.log(
-      `Though this test succeeded the function may still fail in the POST part. Be sure to ` +
-      `also check logs: run \`firebase functions:log --only POST_pickups\` if testing in dev, ` +
-      `or visit \`localhost:4000/functions\` in local.`
-    )
-    // assert true;
-  });
-});
+(async () => {
+  await insertExampleRun();
+  console.log(
+    `Though this test succeeded the function may still fail in the POST part. Be sure to ` +
+    `also check logs: run \`firebase functions:log --only POST_pickups\` if testing in dev, ` +
+    `or visit \`localhost:4000/functions\` in local.`
+  )
+})();

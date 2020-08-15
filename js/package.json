@@ -5,9 +5,9 @@
   "main": "index.js",
   "scripts": {
     "emulators:start": "RUBBISH_GEO_ENV=local firebase emulators:start",
-    "test:local": "RUBBISH_GEO_ENV=local FIRESTORE_EMULATOR_HOST=localhost:8080 mocha functions/tests/",
+    "test:local": "RUBBISH_GEO_ENV=local FIRESTORE_EMULATOR_HOST=localhost:8080 firebase emulators:exec ../scripts/launch_auth_proxy_tests.sh",
     "test:dev": "pushd ../ && GOOGLE_APPLICATION_CREDENTIALS=$PWD/js/serviceAccountKey.json && popd && RUBBISH_GEO_ENV=dev mocha functions/tests/",
-    "test": "npm run-script test:local"
+    "test": "npm run test:local"
   },
   "repository": {
     "type": "git",
