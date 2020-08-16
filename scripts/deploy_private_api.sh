@@ -51,20 +51,29 @@ fi
 
 # Finally we are ready to deploy our functions.
 echo "Deploying cloud functions...⚙️"
-for FNAME in POST_pickups GET
-do
-    if [[ "$FNAME" == "POST_pickups" ]]; then
-        INGRESS_SETTINGS="internal-only"
-    else
-        INGRESS_SETTINGS="all"
-    fi
-    gcloud functions deploy $FNAME \
-        --ingress-settings=$INGRESS_SETTINGS \
-        --runtime=python37 \
-        --source=$TMPDIR \
-        --stage-bucket=$GCS_STAGE_BUCKET \
-        --set-env-vars=RUBBISH_POSTGIS_CONNSTR=$RUBBISH_POSTGIS_CONNSTR \
-        --trigger-http
-    echo "Deployed function $FNAME successfully. ✔️"
-done
+gcloud functions deploy POST_pickups \
+    --ingress-settings=internal-only \
+    --runtime=python37 \
+    --source=$TMPDIR \
+    --stage-bucket=$GCS_STAGE_BUCKET \
+    --set-env-vars=RUBBISH_POSTGIS_CONNSTR=$RUBBISH_POSTGIS_CONNSTR \
+    --trigger-http
+echo "Deployed function POST_pickups successfully. ✔️"
+# NOTE(aleksey): this function will be called by clients (application end users) that have
+# firebase perms but no GCP perms. We disable VPC access control (ACL) (--ingress-settings=all)
+# and IAM access control (RBAC) (add-iam-policy-binding GET --member=allUsers) to turn off GCP
+# permissions boundaries. Authentication is handled instead within the function using the
+# firebase user identity token verification flow instead.
+#
+# TODO: It might be possible to enable both GCP auth and Firebase, the methodology for doing so is
+# undocumented.
+gcloud functions deploy GET \
+    --ingress-settings=all \
+    --runtime=python37 \
+    --source=$TMPDIR \
+    --stage-bucket=$GCS_STAGE_BUCKET \
+    --set-env-vars=RUBBISH_POSTGIS_CONNSTR=$RUBBISH_POSTGIS_CONNSTR \
+    --trigger-http
+gcloud functions add-iam-policy-binding GET --member=allUsers --role=roles/cloudfunctions.invoker
+echo "Deployed function GET successfully. ✔️"
 echo "All done! To see the functions deployed visit https://console.cloud.google.com/functions/."

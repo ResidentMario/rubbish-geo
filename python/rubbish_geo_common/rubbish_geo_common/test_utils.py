@@ -4,6 +4,7 @@ Methods useful for testing used in both admin and client tests.
 from unittest.mock import patch
 from datetime import datetime, timezone
 import random
+import os
 
 from shapely.geometry import LineString
 
@@ -11,7 +12,21 @@ from rubbish_geo_common.db_ops import reset_db
 from rubbish_geo_common.consts import RUBBISH_TYPES
 
 def get_db(profile=None):
-    return f"postgresql://rubbish-test-user:polkstreet@localhost:5432/rubbish"
+    if 'RUBBISH_GEO_ENV' not in os.environ or os.environ['RUBBISH_GEO_ENV'] == 'local':
+        return f"postgresql://rubbish-test-user:polkstreet@localhost:5432/rubbish"
+    elif os.environ['RUBBISH_GEO_ENV'] == 'dev':
+        if 'RUBBISH_POSTGIS_CONNSTR' not in os.environ:
+            raise ValueError(
+                f"The 'RUBBISH_GEO_ENV' environment variable is set to non 'local' value "
+                f"{os.environ['RUBBISH_GEO_ENV']!r}, but the 'RUBBISH_POSTGIS_CONNSTR' value "
+                f"is unset. Set this value to the correct PostGIS instance connection string."
+            )
+        return os.environ['RUBBISH_POSTGIS_CONNSTR']
+    else:
+        raise ValueError(
+            f"'RUBBISH_GEO_ENV' must be set to one of 'local' or 'dev', but found value "
+            f"{os.environ['RUBBISH_GEO_ENV']!r} instead."
+        )
 
 def clean_db(f):
     """
