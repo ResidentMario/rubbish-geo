@@ -1,10 +1,20 @@
 """
 Cloud functions defining the rubbish-geo private API.
 """
+from flask import abort
+from firebase_admin.auth import verify_id_token
+from firebase_admin import initialize_app
 import shapely
 
 from rubbish_geo_client import write_pickups, radial_get, sector_get, coord_get, run_get
 from rubbish_geo_common.db_ops import get_db
+
+# NOTE(aleksey): calling verify_id_token requires initializing the app. You do not
+# need to be authenticated to the specific project that minted the token in order to be able to
+# verify its authenticity, but such requests are rate-limited and will raise a warning stating as
+# much. This warning can safely be ignored when running local tests because cloud functions are a
+# different environment with all the proper bits already set up.
+app = initialize_app()
 
 def POST_pickups(request):
     """
@@ -97,7 +107,6 @@ def GET_coord(request):
     x = float(args['x'])
     y = float(args['y'])
     include_na = args['include_na'].title() == 'True' if 'include_na' in args else False
-    print(include_na)
 
     return {"blockfaces": coord_get((x, y), include_na=include_na)}
 
@@ -123,7 +132,19 @@ def GET(request):
     args = request.args
     if 'request_type' not in args:
         raise ValueError("This request is missing the required 'request_type' URL parameter.")
-    
+
+    authorization = request.headers.get('Authorization')
+    if authorization is None:
+        abort(403)
+    try:
+        id_token = authorization.split("Bearer ")[1]
+    except (ValueError, IndexError):
+        abort(403)
+    try:
+        verify_id_token(id_token, app=app, check_revoked=False)
+    except:
+        abort(403)
+
     t = args['request_type']
     if t == 'run':
         return GET_run(request)

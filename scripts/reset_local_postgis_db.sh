@@ -21,8 +21,4 @@ docker run -d \
 pushd ../python/migrations && \
     docker exec -it rubbish-db-container alembic -c test_alembic.ini upgrade head && \
     popd
-./wait_for_postgres.sh
-pushd ../python/migrations && \
-    docker exec -it rubbish-db-container alembic -c test_alembic.ini upgrade head && \
-    popd
 echo "PostGIS ready!"
