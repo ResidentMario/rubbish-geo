@@ -5,7 +5,7 @@ set -e
 # Check ports.
 for PORT in 5001 8080 8081
 do
-    PORT_IN_USE=$(nc -z 127.0.0.1 8080 && echo "IN USE" || echo "FREE")
+    PORT_IN_USE=$(nc -z 127.0.0.1 $PORT && echo "IN USE" || echo "FREE")
     if [[ "$PORT_IN_USE" == "IN USE" ]]; then
         echo "Could not start script: port $PORT unavailable."
         echo "Before you run this script, ensure that ports 5001, 8080, and 8081 are free."
@@ -30,10 +30,10 @@ sleep 5
 
 echo "Running private API integration test..."
 export GOOGLE_APPLICATION_CREDENTIALS=$RUBBISH_BASE_DIR/js/serviceAccountKey.json
-PRIVATE_API_EMULATOR_HOST="http://localhost:8081" \
+PRIVATE_API_HOST="http://localhost:8081" \
     pytest $RUBBISH_BASE_DIR/python/functions/tests/tests.py -k POST_pickups
 
-PRIVATE_API_EMULATOR_HOST="http://localhost:8082" \
+PRIVATE_API_HOST="http://localhost:8082" \
     pytest $RUBBISH_BASE_DIR/python/functions/tests/tests.py -k GET
 
 echo "Starting authentication API emulator and running authentication proxy integration test..."

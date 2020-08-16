@@ -67,10 +67,10 @@ print(id_token)
 
 headers = {"Authorization": f"Bearer {id_token}"}
 
-if "PRIVATE_API_EMULATOR_HOST" not in os.environ:
+if "PRIVATE_API_HOST" not in os.environ:
     F_URL = "http://localhost:8081"
 else:
-    F_URL = os.environ["PRIVATE_API_EMULATOR_HOST"]
+    F_URL = os.environ["PRIVATE_API_HOST"]
 
 class Test_POST_pickups(unittest.TestCase):
     @clean_db
