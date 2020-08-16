@@ -53,8 +53,13 @@ fi
 echo "Deploying cloud functions...⚙️"
 for FNAME in POST_pickups GET
 do
+    if [[ "$FNAME" == "POST_pickups" ]]; then
+        INGRESS_SETTINGS="internal-only"
+    else
+        INGRESS_SETTINGS="all"
+    fi
     gcloud functions deploy $FNAME \
-        --ingress-settings=internal-only \
+        --ingress-settings=$INGRESS_SETTINGS \
         --runtime=python37 \
         --source=$TMPDIR \
         --stage-bucket=$GCS_STAGE_BUCKET \

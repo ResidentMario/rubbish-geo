@@ -27,7 +27,7 @@ pushd ../js && firebase deploy --only functions:proxy_POST_PICKUPS && popd
 # While not strictly necessary to succeed in running this script, I've added a check here to help
 # prevent user surprise when the integration tests don't work.
 if [[ ! -f "../js/serviceAccountKey.json" ]]; then
-    echo "WARNING: the /js/serviceAccountKey.json files does not exist."
+    echo "WARNING: the /js/serviceAccountKey.json file does not exist."
     echo "You will not be able to run integration tests until you create it!"
     echo "See further https://firebase.google.com/docs/admin/setup#initialize-sdk."
 fi
