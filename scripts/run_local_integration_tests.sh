@@ -29,6 +29,7 @@ echo "Sleeping for five seconds to give the emulators time to start up..."
 sleep 5
 
 echo "Running private API integration test..."
+export GOOGLE_APPLICATION_CREDENTIALS=$RUBBISH_BASE_DIR/js/serviceAccountKey.json
 PRIVATE_API_EMULATOR_HOST="http://localhost:8081" \
     pytest $RUBBISH_BASE_DIR/python/functions/tests/tests.py -k POST_pickups
 
