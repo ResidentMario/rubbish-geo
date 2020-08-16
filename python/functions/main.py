@@ -155,7 +155,8 @@ def GET(request):
     elif t == 'radial':
         return GET_radial(request)
     else:
-        raise ValueError(
-            f"Received request with invalid 'request_type' value {t!r}. 'request_type' must be "
-            f"one of 'run', 'sector', 'coord', or 'radial'."
-        )
+        # raise ValueError(
+        #     f"Received request with invalid 'request_type' value {t!r}. 'request_type' must be "
+        #     f"one of 'run', 'sector', 'coord', or 'radial'."
+        # )
+        abort(400)
