@@ -33,6 +33,14 @@ def set_db(dbstr, profile=None):
     with open(cfg_fp, "w") as f:
         cfg.write(f)
 
+def get_db_cfg():
+    cfg_fp = APPDIR / "config"
+    if not cfg_fp.exists():
+        return None
+    cfg = configparser.ConfigParser()
+    cfg.read(cfg_fp)
+    return cfg
+
 def get_db(profile=None):
     """
     Gets the current database. Returns None if unset.
@@ -43,11 +51,7 @@ def get_db(profile=None):
     if profile is None:
         profile = 'default'
 
-    cfg_fp = APPDIR / "config"
-    if not cfg_fp.exists():
-        return None
-    cfg = configparser.ConfigParser()
-    cfg.read(cfg_fp)
+    cfg = get_db_cfg()
     return cfg[profile]['connstr']
 
 def db_sessionmaker(profile=None):
@@ -91,4 +95,4 @@ def reset_db(profile=None):
     finally:
         session.close()
 
-__all__ = ['set_db', 'get_db', 'db_sessionmaker', 'reset_db']
+__all__ = ['set_db', 'get_db_cfg', 'get_db', 'db_sessionmaker', 'reset_db']
