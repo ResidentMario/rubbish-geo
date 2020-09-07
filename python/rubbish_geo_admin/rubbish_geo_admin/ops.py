@@ -16,7 +16,7 @@ from shapely.geometry import Polygon
 from rich.console import Console
 from rich.table import Table
 
-from rubbish_geo_common.db_ops import db_sessionmaker, get_db
+from rubbish_geo_common.db_ops import db_sessionmaker, get_db, get_db_cfg
 from rubbish_geo_common.orm import Zone, ZoneGeneration, Centerline, Sector
 
 def _get_name_for_centerline_edge(G, u, v):
@@ -259,7 +259,9 @@ def show_zones(profile=None):
         for zone in zones:
             zone_gen_ids = [gen.id for gen in zone.zone_generations]
             n_centerlines = (
-                session.query(Centerline).filter(Centerline.id in zone_gen_ids).count()
+                session.query(Centerline).filter(
+                    Centerline.first_zone_generation.in_(zone_gen_ids)
+                ).count()
             )
             bounds = _poly_wkb_to_bounds_str(zone.bounding_box)
             table.add_row(
@@ -267,6 +269,20 @@ def show_zones(profile=None):
                 str(n_centerlines), str(bounds)
             )
         console.print(table)
+
+def show_dbs():
+    """Pretty-prints a list of database connection strings."""
+    cfg = get_db_cfg()
+    console = Console()
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Profile", justify="left")
+    table.add_column("Value", justify="left")
+    for profile in cfg:
+        if profile == 'DEFAULT':
+            continue
+        value = cfg[profile]['connstr']
+        table.add_row(profile, value)
+    console.print(table)
 
 def _validate_sector_geom(filepath):
     if not os.path.exists(filepath) or os.path.isdir(filepath):

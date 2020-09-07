@@ -30,6 +30,7 @@ To test that this installed successfully, try running `rubbish-admin --help`&mda
 Before you can run the tests for the first time, you will first need to build the database Docker image:
 
 ```bash
+# PWD=rubbish-geo
 $ docker build --file Dockerfile.database --tag rubbish-db .
 ```
 
@@ -38,6 +39,8 @@ After this you can run the Python unit tests via:
 ```bash
 $ /scripts/run_local_unit_tests.sh
 ```
+
+This script will launch (or restart) the database container the container automatically, so no `docker run` is necessary.
 
 ## migrations
 

@@ -9,7 +9,7 @@ import subprocess
 from rubbish_geo_common.db_ops import set_db as _set_db, reset_db as _reset_db, get_db as _get_db
 from .ops import (
     update_zone as _update_zone, insert_sector as _insert_sector, delete_sector as _delete_sector,
-    show_sectors as _show_sectors, show_zones as _show_zones
+    show_sectors as _show_sectors, show_zones as _show_zones, show_dbs
 )
 
 @click.group()
@@ -30,14 +30,17 @@ def connect(profile):
     psql = sp.stdout.decode("utf-8").rstrip()
     os.execl(psql, psql, connstr)
 
-@click.command(name="get-db", short_help="Prints the DB connection string.")
-@click.option("-p", "--profile", help="Optional profile. If not set uses default profile.")
+@click.command(name="get-db", short_help="Prints the DB connection strings.")
+@click.option("-p", "--profile", help="Optional profile. If set, prints just that string.")
 def get_db(profile):
-    connstr = _get_db(profile=profile)
-    if connstr:
-        print(connstr)
+    if profile is None:
+        show_dbs()
     else:
-        print("Connection string not set.")
+        connstr = _get_db(profile=profile)
+        if connstr:
+            print(connstr)
+        else:
+            print("Connection string not set.")
 
 @click.command(name="set-db", short_help="Set the DB connection string.")
 @click.argument("dbstr")
