@@ -2,16 +2,27 @@
 # Run this script to deploy or redeploy the private API.
 set -e
 
-# Set this to the PostGIS database URI. This value will be read by rubbish.common.db_ops.get_db
-# at function runtime.
-if [[ -z "$RUBBISH_POSTGIS_CONNSTR" ]]; then
-    echo "RUBBISH_POSTGIS_CONNSTR environment variable not set, exiting." && exit 1
-fi
+# Check that jq is installed; we use this tool to parse gcloud outputs.
+jq --help >/dev/null || (echo "jq is not installed, 'brew install jq' to get it." && exit 1)
+
 # Set this to the Rubbish environment, one of {dev, prod}. This value is used to ensure bucket
 # name uniqueness.
 if [[ -z "$RUBBISH_GEO_ENV" ]]; then
     echo "RUBBISH_GEO_ENV environment variable not set, exiting." && exit 1
 fi
+# The connection name will be a string in the format "PROJECT:REGION:INSTANCE". It is available
+# on the "Overview" page in the Cloud SQL web console.
+if [[ -z "$RUBBISH_POSTGIS_CONNECTION_NAME" ]]; then
+    echo "RUBBISH_POSTGIS_CONNECTION_NAME environment variable not set, exiting." && exit 1
+fi
+# Set this to the read_write user password.
+if [[ -z "$RUBBISH_GEO_READ_WRITE_USER_PASSWORD" ]]; then
+    echo "RUBBISH_GEO_READ_WRITE_USER_PASSWORD environment variable not set, exiting." && exit 1
+fi
+# NOTE(aleksey): pg8000 is a pure-Python Postgres DB connector implementation. We're using it here
+# instead of the more typical psycops2 because psycops2 doesn't support GCP's (mandatory) UNIX
+# socket connection code path.
+RUBBISH_POSTGIS_CONNSTR="postgresql+pg8000://read_write:$RUBBISH_GEO_READ_WRITE_USER_PASSWORD@/rubbish?unix_sock=/cloudsql/$RUBBISH_POSTGIS_CONNECTION_NAME/.s.PGSQL.5432"
 
 # Create the following folder structure defining the cloud function:
 #
@@ -70,7 +81,6 @@ else
     exit 1
 fi
 
-# postgresql://read_write:polkstreet@/rubbish?unix_sock=/cloudsql/rubbish-ee2d0:us-west1:rubbish-geo-postgis-db-4197/.s.PGSQL.5432
 # Finally we are ready to deploy our functions.
 echo "Deploying cloud functions...⚙️"
 gcloud functions deploy POST_pickups \

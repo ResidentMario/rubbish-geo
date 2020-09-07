@@ -34,7 +34,8 @@ else
         --region="us-west1"
     gcloud sql users set-password postgres --instance=$INSTANCE_NAME \
         --password=$RUBBISH_GEO_POSTGRES_USER_PASSWORD
-    # NOTE(aleksey): instance names are reserved for a while even after deletion, thus the $RANDOM.
+    # NOTE(aleksey): instance names are reserved for a while even after deletion, thus the $RANDOM
+    # to avoid collisions.
     INSTANCE_NAME="rubbish-geo-postgis-db-$RANDOM"
 fi
 
@@ -72,6 +73,8 @@ pushd $TMPDIR && alembic -c migrations/remote_alembic.ini upgrade head && popd
 echo "Adding this database to your local database profiles...✏️"
 rubbish-admin set-db --profile $RUBBISH_GEO_ENV $RW_RUBBISH_DB_CONNSTR
 
-echo "Done! You can now connect to this database by running: "
+echo "Done! If this database is local you can now connect to it by running: "
 echo "\$ rubbish-admin connect --profile $RUBBISH_GEO_ENV"
 echo "To connect directly, use the following database connection string: $RW_RUBBISH_DB_CONNSTR."
+echo "If this database is on GCP you will need to deploy the GCP SQL Proxy first. See futher: "
+echo "https://cloud.google.com/sql/docs/postgres/sql-proxy"
