@@ -2,6 +2,13 @@
 # Runs the integration tests locally.
 set -e
 
+# The 'WEB_API_KEY' environment variable must be set to the project's web API key.
+# This value may be read from the settings page for the project:
+# https://console.firebase.google.com/project/_/settings/general.
+if [[ -z "$WEB_API_KEY" ]]; then
+    echo "WEB_API_KEY environment variable not set, exiting." && exit 1
+fi
+
 # Check ports.
 for PORT in 5001 8080 8081
 do

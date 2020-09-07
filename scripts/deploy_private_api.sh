@@ -49,16 +49,36 @@ else
     gsutil mb $GCS_STAGE_BUCKET
 fi
 
-# Finally we are ready to deploy our functions.
-echo "Deploying cloud functions...⚙️"
+# Next, verify that the service account the function will use has high enough permissions.
+# For now we are just reusing the firebase-adminsdk member (which Firebase uses throughout).
+# This service accounts needs to have the "Cloud SQL Client" role attached.
+echo "Verifying service account...🥕"
 GOOGLE_APPLICATION_CREDENTIALS=$RUBBISH_BASE_DIR/js/serviceAccountKey.json
 SERVICE_ACCOUNT=$(cat $GOOGLE_APPLICATION_CREDENTIALS | jq -r '.client_email')
+
+gcloud projects get-iam-policy rubbish-ee2d0 --format json | \
+    jq -r '.bindings | map(select(.role == "roles/cloudsql.client")) | .[0].members' | \
+    grep $SERVICE_ACCOUNT 1>&0 && CLOUD_SQL_CLIENT_PERMISSION_SET=0 ||
+        CLOUD_SQL_CLIENT_PERMISSION_SET=1
+if [[ CLOUD_SQL_CLIENT_PERMISSION_SET -eq 0 ]]; then
+    echo "The backing service account has the right permissions set, continuing..."
+else
+    echo "ERROR: the backing service account $SERVICE_ACCOUNT must have the Cloud SQL Client "
+    echo "permission set. Add this role to the account using the web console and then try again. "
+    echo "For more information refer to the following page in the GCP documentation: "
+    echo "https://cloud.google.com/sql/docs/postgres/connect-functions."
+    exit 1
+fi
+
+# postgresql://read_write:polkstreet@/rubbish?unix_sock=/cloudsql/rubbish-ee2d0:us-west1:rubbish-geo-postgis-db-4197/.s.PGSQL.5432
+# Finally we are ready to deploy our functions.
+echo "Deploying cloud functions...⚙️"
 gcloud functions deploy POST_pickups \
     --ingress-settings=internal-only \
     --runtime=python37 \
     --source=$TMPDIR \
     --stage-bucket=$GCS_STAGE_BUCKET \
-    --set-env-vars=RUBBISH_POSTGIS_CONNSTR=$RUBBISH_POSTGIS_CONNSTR \
+    --set-env-vars="RUBBISH_POSTGIS_CONNSTR=$RUBBISH_POSTGIS_CONNSTR,RUBBISH_GEO_ENV=$RUBBISH_GEO_ENV" \
     --service-account=$SERVICE_ACCOUNT \
     --trigger-http
 echo "Deployed function POST_pickups successfully. ✔️"
@@ -67,9 +87,7 @@ echo "Deployed function POST_pickups successfully. ✔️"
 # firebase perms but no GCP perms. We disable VPC access control (ACL) (--ingress-settings=all)
 # and IAM access control (RBAC) (add-iam-policy-binding GET --member=allUsers) to turn off GCP
 # permissions boundaries. Authentication is handled instead within the function using the
-# firebase user identity token verification flow instead.
-#
-# TODO: It might be possible to enable both GCP auth and Firebase auth.
+# firebase user identity token verification flow.
 gcloud functions deploy GET \
     --ingress-settings=all \
     --runtime=python37 \

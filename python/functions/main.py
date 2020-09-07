@@ -5,6 +5,7 @@ from flask import abort
 from firebase_admin.auth import verify_id_token
 from firebase_admin import initialize_app
 import shapely
+import os
 
 from rubbish_geo_client import write_pickups, radial_get, sector_get, coord_get, run_get
 from rubbish_geo_common.db_ops import get_db
@@ -15,6 +16,19 @@ from rubbish_geo_common.db_ops import get_db
 # much. This warning can safely be ignored when running local tests because cloud functions are a
 # different environment with all the proper bits already set up.
 app = initialize_app()
+
+# NOTE(aleksey): Cloud Functions do not allow direct access to Cloud SQL even though they're in
+# the same VPC :(. The only documented code path for accessing Cloud SQL from inside of a Cloud
+# Function is one that uses UNIX sockets. This requires that the folder that will be used to
+# establish the connection exists (otherwise Linux will error out). "/cloudsql" is the
+# (hard-coded) folder path we'll use. See the following page in the GCP documentation:
+# https://cloud.google.com/sql/docs/postgres/connect-functions.
+if 'RUBBISH_GEO_ENV' in os.environ and os.environ['RUBBISH_GEO_ENV'] != 'local':
+    try:
+        os.mkdir("/cloudsql")
+    # cloud functions recycle disks, so a previous deploy may have created the path already
+    except FileExistsError:
+        pass
 
 def POST_pickups(request):
     """
@@ -131,7 +145,8 @@ def GET(request):
     """
     args = request.args
     if 'request_type' not in args:
-        raise ValueError("This request is missing the required 'request_type' URL parameter.")
+        # raise ValueError("This request is missing the required 'request_type' URL parameter.")
+        abort(403)
 
     authorization = request.headers.get('Authorization')
     if authorization is None:
