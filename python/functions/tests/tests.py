@@ -37,7 +37,7 @@ import firebase_admin.auth
 # lookup the id token.
 #
 # Note that this user will show up in Firebase's authentication console as a new user (with user 
-# UID 'polkstreet'): https://console.firebase.google.com/project/PROJECT/authentication/users.
+# UID 'polkstreet'): https://console.firebase.google.com/project/_/authentication/users.
 if "GOOGLE_APPLICATION_CREDENTIALS" not in os.environ:
     raise ValueError(
         "The 'GOOGLE_APPLICATION_CREDENTIALS' environment variable must be set and must point "
@@ -50,11 +50,8 @@ if "WEB_API_KEY" not in os.environ:
         "This value may be read from the settings page for your project: "
         "https://console.firebase.google.com/project/_/settings/general."
         "To learn more about GCP API keys refer to: "
-        "https://cloud.google.com/docs/authentication/api-keys?visit_id=637331240698538048-645747484&rd=1"
-        "Unfortunately this cannot be set for you automatically, as GCP API Keys have no public "
-        "programmtic key API. See further: https://stackoverflow.com/q/61623786/1993206."
+        "https://cloud.google.com/docs/authentication/api-keys?visit_id=637331240698538048-645747484&rd=1."
     )
-
 WEB_API_KEY = os.environ["WEB_API_KEY"]
 
 app = firebase_admin.initialize_app()
