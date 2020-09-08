@@ -36,29 +36,28 @@ See the corresponding folders for setup instructions.
 
 ## architecture
 
-![](https://i.imgur.com/a5Y5wQH.png)
+![](https://i.imgur.com/eh3bvgC.png)
 
-The [Rubbish iOS application](https://apps.apple.com/us/app/rubbish-love-where-you-live/id1374702632) (the **client application**) is deployed via [Cloud Firestore](https://firebase.google.com/docs/firestore/), using a Firestore Firebase NoSQL database as its primary system of record. The client application is written in Swift, and the backend tooling in Node.JS. The Firebase SDK is used for handling authentication between the client and the backend services.
+The [Rubbish iOS application](https://apps.apple.com/us/app/rubbish-love-where-you-live/id1374702632) (the **client application**) is deployed via [Cloud Firestore](https://firebase.google.com/docs/firestore/), using a Firestore Firebase NoSQL database as its primary system of record. The client application is written in Swift, and the backend tooling in NodeJS. The Firebase SDK is used for handling authentication between the client and the backend services.
 
-A [Firebase function](https://firebase.google.com/docs/functions/), the **authentication proxy**, listens for new run writes to the database. This function proxies a request to a [Cloud Function](https://console.cloud.google.com/functions/) **private API**, written in Python. The function (actually a thin wrapper over the `rubbish-geo` **client library**) processes the data and inserts it into the **rubbish-geo database**, a PostGIS database.
+A [Firebase function](https://firebase.google.com/docs/functions/) **database listener** listens for new run writes to the database. This function proxies the new data to a `POST_pickups` [Cloud Function](https://console.cloud.google.com/functions/), part of this service's **functional API**, written in Python. The function processes the data and inserts it into the **rubbish-geo database**, a PostGIS database.
 
-Adminstrative tasks are performed using the `rubbish-admin` CLI application.
+On the read side, clients make `GET` requests to a *functional API* endpoint. Authentication is performed using a Firebase bearer token in the request header. Assuming the request passes the security check, the cloud function (actually a thin wrapper over the `rubbish-geo` **client library**) queries the database for the relevant records, performs some processing, and returns the result to the client. Future services (e.g. the aforementioned "trash map" community view) will communicate with the functional API similarly.
+
+Adminstrative tasks are performed using the `rubbish-admin` **admin CLI**. The most common administrative task is writing new zones (street grids, via [OSMNX](https://github.com/gboeing/osmnx), e.g. "San Francisco, California") or sectors (polygonal areas of interest, e.g. "Lower Polk Community Benefit District") to the database.
 
 The `rubbish-geo` service uses PostGIS, with client logic implemented in Python (taking full advantage of the great Python geospatial ecosystem: `geopandas`, `shapely`, `osmnx`). These services use GCP authentication for applications outside the VPC, such as the `rubbish-admin` database management CLI tool.
 
-To bridge these two worlds&mdash;GCP services in Python, Firebase services in Node.JS&mdash;an authentication proxy is used. A [Firebase function](https://firebase.google.com/docs/functions/) listens for newly completed rubbish runs getting written into Firebase. This function, written in Node.JS, proxies a request to a [Cloud Function](https://console.cloud.google.com/functions/) based private API, written in Python. The function (actually a thin wrapper over the `rubbish-geo` cleint library) processes the data and inserts it into the database.
+This two-step design, using both Cloud Functions and Firestore Functions, has several advantages:
 
-This design has several advantages:
-
-* It allows us to continue to use only Firebase authentication for the client. A direct client-database connection would require sideloading mobile client authentication via GCP. This is a hard problem that the Firebase SDK solves for us!
-* It makes maximal use of the functionless paradigm. Rubbish's application traffic is low-volume, but bursty, so using FaaS is more cost-effective and easier to manage than setting up dedicated services.
-* Firebase functions do not support Python. Although Cloud Functions support for Firestore event listeners is in beta (which potentially eliminates the need for an auth proxy), it is difficult to test these locally. HTTP endpoints, on the other hand, are easily tested in the local environment using the `functions-framework` package.
-
-This design has one notable disadvantage:
-
-* Using a passthrough function like this introduces additional latency to the request.
+* The client API is completely serverless, which makes scaling easy and helps keep costs down.
+* The client only needs Firebase authentication credentials, e.g. they don't need any awareness of the GCP VPC.
+* It enables the API logic to be written in Python (Firestore Functions are NodeJS-only), allowing us to use Python's rich geospatial tools for the backend logic and the middleware.
+* It maximizes local testability. The `GET` API is testable using `functions-framework`, the `POST` API using the [Firestore Emulator Suite](https://firebase.google.com/docs/emulator-suite).
 
 ## deployment
+
+(note that these instructions are currently incomplete)
 
 To deploy the services for the first time, make sure you are authenticated to the project you are deploying to, and have all of the things you need installed. Then run the following:
 
@@ -78,16 +77,10 @@ $ ./deploy_private_api.sh
 $ ./deploy_auth_proxy.sh
 ```
 
-Deploy scripts are idempotent, so you can easily deploy just one part of the stack if needed. This is useful if you're working on just one part of the stack and need to update just that part (for example, you need to run the database migrations again).
+Deploy scripts are idempotent, so you can easily redeploy just one part of the stack if needed. This is useful if you're working on just one part of the stack and need to update just that part (for example, you need to run the database migrations again).
 
 ## testing
 
 Instructions on how to run local tests for each of the major components are included in `README` files in the project subdirectories, refer to those for more details on that.
 
-PRs are automatically tested using Travis CI (though this is currently disabled unfortunately).
-
-Local unit tests can be run using `run_local_unit_tests.sh` in `scripts/`.
-
-Local integration tests can be run using `run_local_integration_tests.sh` in `scripts/`
-
-Remote integration tests are under active development and not yet available.
+PRs are automatically tested using Travis CI. Local unit tests can be run using `run_local_unit_tests.sh` in `scripts/`. Local integration tests can be run using `run_local_integration_tests.sh`. Remote integration tests can be run using `run_dev_integration_tests.sh`.
