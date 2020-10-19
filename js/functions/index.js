@@ -40,8 +40,11 @@ exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{run
         firebaseRunID = photoStoryData.photoStoryID;
         const type = photoStoryData.rubbishType;
         const timestamp = photoStoryData.userTimeStamp;
-        // Documents that preexist the development of this service lack the curb prop.
-        const curb = Object.hasOwnProperty(photoStoryData, "curb") ?
+        // NOTE(aleksey): Documents that preexist the development of this service lack a curb.
+        // NOTE(aleksey): Object.hasOwnProperty("curb") always returns false. The Firebase API does
+        // not make this an owned property, it is inherited from the prototype chain. Hence the use
+        // of the "in" operator here.
+        const curb = ("curb" in photoStoryData) ?
           photoStoryData.curb :
           null;
         const geometry = `POINT(${photoStoryData.long} ${photoStoryData.lat})`
