@@ -59,3 +59,6 @@ PRIVATE_API_HOST=$GET_URL RUBBISH_POSTGIS_CONNSTR=$RUBBISH_POSTGIS_CONNSTR \
 
 echo "Shutting down cloud sql proxy..."
 kill -s SIGSTOP %1
+
+echo "Running database proxy integration tests..."
+pushd $RUBBISH_BASE_DIR/js 1>&0 && npm run test:dev && popd 1>&0

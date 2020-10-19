@@ -53,7 +53,6 @@ async function insertExampleRun() {
   await insertExampleRun();
   console.log(
     `Though this test succeeded the function may still fail in the POST part. Be sure to ` +
-    `also check logs: run \`firebase functions:log --only proxy_POST_pickups\` ` +
-    `in dev, or visit \`localhost:4000/functions\` in local.`
+    `also check the error logs.`
   )
 })();
