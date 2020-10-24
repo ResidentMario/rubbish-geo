@@ -180,7 +180,6 @@ class Test_GET_radial(unittest.TestCase):
         result = response.json()
 
         assert result is not None
-        assert len(result) == 1
 
     @clean_db
     @alias_test_db
@@ -199,7 +198,6 @@ class Test_GET_radial(unittest.TestCase):
         result = response.json()
 
         assert result is not None
-        assert len(result) == 1
 
 
 class Test_GET_sector(unittest.TestCase):
@@ -224,7 +222,6 @@ class Test_GET_sector(unittest.TestCase):
         result = response.json()
 
         assert result is not None
-        assert len(result) == 1
 
 
 class Test_GET_coord(unittest.TestCase):
@@ -244,9 +241,9 @@ class Test_GET_coord(unittest.TestCase):
         )
         response.raise_for_status()
         result = response.json()
+        print(result)
 
         assert result is not None
-        assert len(result) == 1
 
 class Test_GET_run(unittest.TestCase):
     @clean_db
@@ -263,4 +260,3 @@ class Test_GET_run(unittest.TestCase):
         result = response.json()
 
         assert result is not None
-        assert len(result) == 1

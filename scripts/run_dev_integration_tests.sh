@@ -11,6 +11,11 @@ fi
 if [[ -z "$RUBBISH_POSTGIS_CONNECTION_NAME" ]]; then
     echo "RUBBISH_POSTGIS_CONNECTION_NAME environment variable not set, exiting." && exit 1
 fi
+# Set this to the Firebase project's web API key:
+# https://console.firebase.google.com/project/_/settings/general.
+if [[ -z "$WEB_API_KEY" ]]; then
+    echo "WEB_API_KEY environment variable not set, exiting." && exit 1
+fi
 
 # Stand up the Cloud SQL Proxy.
 echo "Starting cloud sql proxy..."
@@ -34,31 +39,22 @@ fi
 $RUBBISH_BASE_DIR/cloud_sql_proxy -instances=$RUBBISH_POSTGIS_CONNECTION_NAME=tcp:5433 &
 RUBBISH_POSTGIS_CONNSTR=postgresql://read_write:$RUBBISH_GEO_READ_WRITE_USER_PASSWORD@localhost:5433/rubbish
 
-# Set this to the Firebase project's web API key:
-# https://console.firebase.google.com/project/_/settings/general.
-if [[ -z "$WEB_API_KEY" ]]; then
-    echo "WEB_API_KEY environment variable not set, exiting." && exit 1
-fi
-
 echo "Setting environment variables..."
 pushd ../ 1>&0 && RUBBISH_BASE_DIR=$(echo $PWD) && popd 1>&0
 export GOOGLE_APPLICATION_CREDENTIALS=$RUBBISH_BASE_DIR/js/serviceAccountKey.json
 export RUBBISH_GEO_ENV=dev
 GCP_PROJECT=$(gcloud config get-value project)
 REGION=us-central1  # currently a hardcoded value
-# POST_PICKUPS_URL=https://$REGION-$GCP_PROJECT.cloudfunctions.net/POST_pickups
 GET_URL=https://$REGION-$GCP_PROJECT.cloudfunctions.net/GET
 
 echo "Running private API integration tests..."
-# NOTE(aleksey): POST_pickups only allows internal traffic, so we can't test it directly like
-# we can with GET.
-# PRIVATE_API_HOST=$POST_PICKUPS_URL \
-#     pytest $RUBBISH_BASE_DIR/python/functions/tests/tests.py -k POST_pickups
 PRIVATE_API_HOST=$GET_URL RUBBISH_POSTGIS_CONNSTR=$RUBBISH_POSTGIS_CONNSTR \
-    pytest $RUBBISH_BASE_DIR/python/functions/tests/tests.py -k GET
+    pytest $RUBBISH_BASE_DIR/python/functions/tests/tests.py -k GET || true
 
 echo "Shutting down cloud sql proxy..."
+# NOTE(aleksey): if you ever need to kill manually see https://stackoverflow.com/a/3855359/1993206
 kill -s SIGSTOP %1
 
-echo "Running database proxy integration tests..."
-pushd $RUBBISH_BASE_DIR/js 1>&0 && npm run test:dev && popd 1>&0
+# TODO: re-expose these
+# echo "Running database proxy integration tests..."
+# pushd $RUBBISH_BASE_DIR/js 1>&0 && npm run test:dev && popd 1>&0

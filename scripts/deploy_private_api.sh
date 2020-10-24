@@ -61,25 +61,48 @@ else
 fi
 
 # Next, verify that the service account the function will use has high enough permissions.
-# For now we are just reusing the firebase-adminsdk member (which Firebase uses throughout).
-# This service accounts needs to have the "Cloud SQL Client" role attached.
+# The service account used needs to have roles/firebase.admin, roles/logging.admin, and
+# roles/cloudsql.client permissions.
+# TODO: tighten the service account permissions.
 echo "Verifying service account...🥕"
-GOOGLE_APPLICATION_CREDENTIALS=$RUBBISH_BASE_DIR/js/serviceAccountKey.json
+if [[ ! -f "../python/functions/serviceAccountKey.json" ]]; then
+    echo "ERROR: to deploy the private API, you must have a private key associated with the "
+    echo "IAM service account the cloud functions will use saved to "
+    echo "/python/functions/serviceAccountKey.json on your local disk."
+    exit 1
+fi
+GOOGLE_APPLICATION_CREDENTIALS=$RUBBISH_BASE_DIR/python/functions/serviceAccountKey.json
 SERVICE_ACCOUNT=$(cat $GOOGLE_APPLICATION_CREDENTIALS | jq -r '.client_email')
 
-gcloud projects get-iam-policy rubbish-ee2d0 --format json | \
+SERVICE_ACCOUNT_PERMS=$(gcloud projects get-iam-policy rubbish-ee2d0 --format json)
+echo $SERVICE_ACCOUNT_PERMS \
     jq -r '.bindings | map(select(.role == "roles/cloudsql.client")) | .[0].members' | \
     grep $SERVICE_ACCOUNT 1>&0 && CLOUD_SQL_CLIENT_PERMISSION_SET=0 ||
         CLOUD_SQL_CLIENT_PERMISSION_SET=1
-if [[ CLOUD_SQL_CLIENT_PERMISSION_SET -eq 0 ]]; then
-    echo "The backing service account has the right permissions set, continuing..."
-else
-    echo "ERROR: the backing service account $SERVICE_ACCOUNT must have the Cloud SQL Client "
-    echo "permission set. Add this role to the account using the web console and then try again. "
-    echo "For more information refer to the following page in the GCP documentation: "
-    echo "https://cloud.google.com/sql/docs/postgres/connect-functions."
+if [[ CLOUD_SQL_CLIENT_PERMISSION_SET -eq 1 ]]; then
+    echo "ERROR: the backing service account $SERVICE_ACCOUNT must have the roles/cloudsql.client "
+    echo "permission set. Add this role to the account using the web console and then try again."
     exit 1
 fi
+echo $SERVICE_ACCOUNT_PERMS \
+    jq -r '.bindings | map(select(.role == "roles/logging.admin")) | .[0].members' | \
+    grep $SERVICE_ACCOUNT 1>&0 && LOGGING_ADMIN_PERMISSION_SET=0 ||
+        LOGGING_ADMIN_PERMISSION_SET=1
+if [[ LOGGING_ADMIN_PERMISSION_SET -eq 1 ]]; then
+    echo "ERROR: the backing service account $SERVICE_ACCOUNT must have the roles/logging.admin "
+    echo "permission set. Add this role to the account using the web console and then try again."
+    exit 1
+fi
+echo $SERVICE_ACCOUNT_PERMS \
+    jq -r '.bindings | map(select(.role == "roles/firebase.admin")) | .[0].members' | \
+    grep $SERVICE_ACCOUNT 1>&0 && FIREBASE_ADMIN_PERMISSION_SET=0 ||
+        FIREBASE_ADMIN_PERMISSION_SET=1
+if [[ FIREBASE_ADMIN_PERMISSION_SET -eq 1 ]]; then
+    echo "ERROR: the backing service account $SERVICE_ACCOUNT must have the roles/firebase.admin "
+    echo "permission set. Add this role to the account using the web console and then try again."
+    exit 1
+fi
+echo "The backing service account has the right permissions set, continuing..."
 
 # Finally we are ready to deploy our functions.
 echo "Deploying cloud functions...⚙️"
@@ -103,7 +126,7 @@ gcloud functions deploy GET \
     --runtime=python37 \
     --source=$TMPDIR \
     --stage-bucket=$GCS_STAGE_BUCKET \
-    --set-env-vars=RUBBISH_POSTGIS_CONNSTR=$RUBBISH_POSTGIS_CONNSTR \
+    --set-env-vars=RUBBISH_POSTGIS_CONNSTR=$RUBBISH_POSTGIS_CONNSTR,RUBBISH_GEO_ENV=$RUBBISH_GEO_ENV \
     --service-account=$SERVICE_ACCOUNT \
     --trigger-http
 gcloud functions add-iam-policy-binding GET --member=allUsers --role=roles/cloudfunctions.invoker

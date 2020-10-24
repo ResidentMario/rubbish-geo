@@ -7,3 +7,4 @@ click
 flask
 firebase-admin
 pg8000  # See GH#64
+google-cloud-logging
