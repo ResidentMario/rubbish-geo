@@ -241,7 +241,6 @@ class Test_GET_coord(unittest.TestCase):
         )
         response.raise_for_status()
         result = response.json()
-        print(result)
 
         assert result is not None
 
