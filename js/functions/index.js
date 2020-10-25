@@ -25,7 +25,7 @@ if (process.env.RUBBISH_GEO_ENV === "local") {
 
 // Listens for new runs inserted into /RubbishRunStory/:runID.
 exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{runID}')
-  .onCreate((snap, context) => {
+  .onCreate((snap, _) => {
     const rubbishRunStory = snap.data();
     const firebaseID = rubbishRunStory.rubbishRunStoryModelID;
     const photoStoryPromises = [];
@@ -35,47 +35,57 @@ exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{run
     }
     let firebaseRunID = null;
     return Promise.all(photoStoryPromises).then((photoStories => {
-      let payload = photoStories.map(photoStory => {
-        const photoStoryData = photoStory.data();
-        firebaseRunID = photoStoryData.photoStoryID;
-        const type = photoStoryData.rubbishType;
-        const timestamp = photoStoryData.userTimeStamp;
-        // NOTE(aleksey): Documents that preexist the development of this service lack a curb.
-        // NOTE(aleksey): Object.hasOwnProperty("curb") always returns false. The Firebase API does
-        // not make this an owned property, it is inherited from the prototype chain. Hence the use
-        // of the "in" operator here.
-        const curb = ("curb" in photoStoryData) ?
-          photoStoryData.curb :
-          null;
-        const geometry = `POINT(${photoStoryData.long} ${photoStoryData.lat})`
-        return {
-          firebase_run_id: firebaseRunID,
-          firebase_id: firebaseID,
-          type: type,
-          timestamp: timestamp,
-          curb: curb,
-          geometry: geometry
-        };
-      });
-      payload = {[firebaseID]: payload}
-
-      const log_ids = payload[firebaseID].map(e => e.firebase_run_id);
-      functions.logger.info(
-        `Processing proxy_POST_pickups({${firebaseID}: ...${log_ids}}).`
-      );
-      // eslint-disable-next-line promise/no-nesting
-      return axios.post(private_api_endpoint_url, payload).then(resp => {
+      // https://cloud.google.com/functions/docs/securing/authenticating
+      const metadataServerURL =
+      'http://metadata/computeMetadata/v1/instance/service-accounts/default/identity?audience=';
+      const tokenUrl = metadataServerURL + private_api_endpoint_url;
+      // eslint-disable-next-line promise/catch-or-return, promise/no-nesting
+      axios.get(tokenUrl, {headers: {'Metadata-Flavor': 'Google'}}).then(resp => {
+        const token = resp.data;
+        let payload = photoStories.map(photoStory => {
+          const photoStoryData = photoStory.data();
+          firebaseRunID = photoStoryData.photoStoryID;
+          const type = photoStoryData.rubbishType;
+          const timestamp = photoStoryData.userTimeStamp;
+          // NOTE(aleksey): Documents that preexist the development of this service lack a curb.
+          // NOTE(aleksey): Object.hasOwnProperty("curb") always returns false. The Firebase API does
+          // not make this an owned property, it is inherited from the prototype chain. Hence the use
+          // of the "in" operator here.
+          const curb = ("curb" in photoStoryData) ?
+            photoStoryData.curb :
+            null;
+          const geometry = `POINT(${photoStoryData.long} ${photoStoryData.lat})`
+          return {
+            firebase_run_id: firebaseRunID,
+            firebase_id: firebaseID,
+            type: type,
+            timestamp: timestamp,
+            curb: curb,
+            geometry: geometry
+          };
+        });
+        payload = {[firebaseID]: payload}
+  
+        const log_ids = payload[firebaseID].map(e => e.firebase_run_id);
         functions.logger.info(
-          `proxy_POST_pickups POST of the run with firebaseRunID ${firebaseRunID} was successful.`
+          `Processing proxy_POST_pickups({${firebaseID}: ...${log_ids}}).`
         );
-        return;
-      }).catch((err) => {
-        functions.logger.error(
-          `The proxy_POST_pickups authentication proxy failed to POST to the ` +
-          `POST_pickups private API endpoint. Failed with ${err.name}: ${err.message}`
-        );
-        throw err;
-      }
-      );
+        // eslint-disable-next-line promise/no-nesting
+        return axios.post(
+          private_api_endpoint_url, payload, {headers: {Authorization: `bearer ${token}`}}
+        ).then(_ => {
+          functions.logger.info(
+            `proxy_POST_pickups POST of the run with firebaseRunID ${firebaseRunID} was successful.`
+          );
+          return;
+        }).catch((err) => {
+          functions.logger.error(
+            `The proxy_POST_pickups authentication proxy failed to POST to the ` +
+            `POST_pickups private API endpoint. Failed with ${err.name}: ${err.message}`
+          );
+          throw err;
+        });
+      });
+      return;
     }));
   });
