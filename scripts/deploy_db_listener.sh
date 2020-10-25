@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run this script to deploy or redeploy the authentication proxy.
+# Run this script to deploy or redeploy the database listener.
 set -e
 
 # Check that jq is installed; we use this tool to outputs.
