@@ -16,17 +16,18 @@ We hope to use it to eventually build out a community "trash map", helping organ
 ├── python/
 │   ├── rubbish_geo_client/   <- Python package encapsulating client logic.
 │   ├── rubbish_geo_admin/    <- Python package encapsulating database admin.
-│   ├── rubbish_geo_common/   <- Python package for shared code, e.g. test utils.
-│   ├── functions/            <- Private API functions code.
-│   └── migrations/           <- Database migrations (managed with alembic).
+│   ├── rubbish_geo_common/   <- Python package for shared code and fixtures.
+│   ├── functions/            <- Functional API functions code.
+│   └── migrations/           <- Database migrations.
 ├── scripts/                  <- Administrative scripts.
 │   ├── deploy_postgis_db.sh  <- Database deploy and/or migration script.
-│   ├── deploy_private_api.sh <- Deploys the cloud function private API.
-│   ├── deploy_private_api.sh <- Deploys the cloud function private API.
-│   ├── deploy_auth_proxy.sh  <- Deploys the firebase functions auth proxy.
+│   ├── deploy_functional_api.sh        <- Deploys the functional API.
+│   ├── deploy_db_listener.sh           <- Deploys the database listener.
+│   ├── run_local_unit_tests.sh         <- Runs unit tests locally.
+│   ├── run_dev_integration_tests.sh    <- Runs integration tests in dev.
 │   └── run_local_integration_tests.sh  <- Runs integration tests locally.
 ├── js/
-│   └── functions/            <- Authentication proxy function code.
+│   └── functions/            <- Database listener function code.
 ├── Dockerfile.database       <- Dockerfile bundling the local test db.
 ├── .travis.yml               <- Automated CI tests.
 └── Dockerfile.database       <- Dockerfile bundling the local test db.
@@ -71,10 +72,10 @@ $ export RUBBISH_GEO_ENV=prod
 $ ./deploy_postgis_db.sh
 # the connection string is output from the previous step.
 $ export RUBBISH_POSTGIS_CONNSTR=$1
-$ ./deploy_private_api.sh
+$ ./deploy_functional_api.sh
 # make sure you are authenticated to the right firebase project!
 # TODO: what does this mean though?
-$ ./deploy_auth_proxy.sh
+$ ./deploy_db_listener.sh
 ```
 
 Deploy scripts are idempotent, so you can easily redeploy just one part of the stack if needed. This is useful if you're working on just one part of the stack and need to update just that part (for example, you need to run the database migrations again).

@@ -63,7 +63,7 @@ fi
 
 echo "Running database migrations...💩"
 pushd ../ 1>&0 && RUBBISH_BASE_DIR=$(echo $PWD) && popd 1>&0
-TMPDIR=$(mktemp -d /tmp/rubbish_geo_private_api.XXXXXX)
+TMPDIR=$(mktemp -d /tmp/rubbish_geo_functional_api.XXXXXX)
 cp -rf $RUBBISH_BASE_DIR/python/migrations/ $TMPDIR/migrations
 cat $TMPDIR/migrations/alembic.ini | \
     sed -E "s|sqlalchemy.url = [a-zA-Z:/_0-9@\.-]*|sqlalchemy.url = $RW_RUBBISH_DB_CONNSTR|" > \

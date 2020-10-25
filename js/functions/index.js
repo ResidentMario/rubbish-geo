@@ -9,14 +9,14 @@ const db = admin.firestore();
 // this value is set by an environment variable. When running in dev or prod, this value is set by
 // a (project-wide) Firebase configuration variable (firebase functions do not support environment
 // variables directly, unfortunately).
-let private_api_endpoint_url = null;
+let functional_api_endpoint_url = null;
 if (process.env.RUBBISH_GEO_ENV === "local") {
-  private_api_endpoint_url = "http://localhost:8081";
+  functional_api_endpoint_url = "http://localhost:8081";
 } else {  // [dev, prod]
-  private_api_endpoint_url = functions.config().private_api.post_pickups_url;
-  if (private_api_endpoint_url  === undefined) {
+  functional_api_endpoint_url = functions.config().functional_api.post_pickups_url;
+  if (functional_api_endpoint_url  === undefined) {
     throw new Error(
-      `private_api.post_pickups_url environment configuration variable is not set. Did you forget` +
+      `functional_api.post_pickups_url environment configuration variable is not set. Did you forget` +
       `to set it? For more information refer to the "configuration" section in the README.`
     )
   }
@@ -41,7 +41,7 @@ exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{run
       // https://cloud.google.com/functions/docs/securing/authenticating
       const metadataServerURL =
       'http://metadata/computeMetadata/v1/instance/service-accounts/default/identity?audience=';
-      const tokenUrl = metadataServerURL + private_api_endpoint_url;
+      const tokenUrl = metadataServerURL + functional_api_endpoint_url;
       const tokenResponse = await axios.get(tokenUrl, {headers: {'Metadata-Flavor': 'Google'}});
       token = tokenResponse.data;
     }
@@ -70,7 +70,7 @@ exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{run
     );
 
     return axios.post(
-      private_api_endpoint_url, payload, {headers: {Authorization: `bearer ${token}`}}
+      functional_api_endpoint_url, payload, {headers: {Authorization: `bearer ${token}`}}
     ).then(_ => {
       functions.logger.info(
         `proxy_POST_pickups POST of the run with firebaseRunID ${firebaseRunID} was successful.`
@@ -78,8 +78,8 @@ exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{run
       return;
     }).catch((err) => {
       functions.logger.error(
-        `The proxy_POST_pickups authentication proxy failed to POST to the ` +
-        `POST_pickups private API endpoint. Failed with ${err.name}: ${err.message}`
+        `The proxy_POST_pickups database listener failed to POST to the ` +
+        `POST_pickups functional API endpoint. Failed with ${err.name}: ${err.message}`
       );
       throw err;
     });
