@@ -8,8 +8,8 @@ Installing the packages required by `rubbish-geo-admin` in `[develop]` mode inst
 
 ## testing
 
-The functional API and authentication proxy integration tests can be run via:
+The functional API and database listener integration tests can be run via:
 
 ```bash
-$ /scripts/run_local_unit_tests.sh
+$ /scripts/run_local_integration_tests.sh
 ```

@@ -78,7 +78,7 @@ exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{run
       return;
     }).catch((err) => {
       functions.logger.error(
-        `The proxy_POST_pickups authentication proxy failed to POST to the ` +
+        `The proxy_POST_pickups database listener failed to POST to the ` +
         `POST_pickups functional API endpoint. Failed with ${err.name}: ${err.message}`
       );
       throw err;

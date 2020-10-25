@@ -43,7 +43,7 @@ FUNCTIONAL_API_HOST="http://localhost:8081" \
 FUNCTIONAL_API_HOST="http://localhost:8082" \
     pytest $RUBBISH_BASE_DIR/python/functions/tests/tests.py -k GET || true
 
-echo "Starting authentication API emulator and running authentication proxy integration test..."
+echo "Starting authentication API emulator and running database listener integration test..."
 npm run-script --prefix $RUBBISH_BASE_DIR/js/ test:local || true
 
 echo "Shutting down emulators..."

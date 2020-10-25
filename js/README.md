@@ -1,6 +1,6 @@
 # js
 
-This directory contains the `rubbish-geo` authentication proxy. This [Firebase Function](https://firebase.google.com/docs/functions/get-started) serves two purposes:
+This directory contains the `rubbish-geo` database listener. This [Firebase Function](https://firebase.google.com/docs/functions/get-started) serves two purposes:
 
 1. It listens to writes to the `RubbishRunStory` collection in Firestore, handing off data to the `POST_pickups` cloud function for processing and writing into the `rubbish-geo` PostGIS database.
 2. In the future, it will act as an intermediary between the iOS client and the `rubbish-geo` service.
