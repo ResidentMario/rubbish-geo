@@ -10,6 +10,7 @@ import os
 from rubbish_geo_client import write_pickups, radial_get, sector_get, coord_get, run_get
 from rubbish_geo_common.db_ops import get_db
 
+import sys
 import traceback
 from google.cloud.logging.client import Client
 import logging
@@ -35,7 +36,7 @@ class LogHandler:
     def log_struct(self, struct):
         level = struct.get("level", "info")
         if level == "error":
-            struct[traceback] = traceback.format_exc()
+            struct['traceback'] = traceback.format_exc()
         
         # SO#57712700
         struct["caller"] = inspect.currentframe().f_back.f_code.co_name
@@ -46,6 +47,7 @@ class LogHandler:
             self.logger.log_struct(struct)
 
 logger = LogHandler()
+sys.tracebacklimit = 5
 
 # NOTE(aleksey): calling verify_id_token requires initializing the app. You do not
 # need to be authenticated to the specific project that minted the token in order to be able to
@@ -179,6 +181,11 @@ def GET_sector(request):
     sector_name = args['sector_name']
     include_na = args['include_na'].title() == 'True' if 'include_na' in args else False
     offset = int(args['offset']) if 'offset' in args else 0
+    logger.log_struct({
+        "level": "info",
+        "message": f"Processing GET_sector(sector_name={sector_name}, "
+                   f"include_na={include_na}, offset={offset})."
+    })
 
     try:
         response = sector_get(sector_name, include_na=include_na, offset=offset)
@@ -220,6 +227,10 @@ def GET_coord(request):
             "message": "coord_get call failed."
         })
         abort(400)
+    logger.log_struct({
+        "level": "info",
+        "message": f"Processing GET_coord(x={x}, y={y}, include_na={include_na})."
+    })
 
     return {"status": 200, "blockfaces": response}
 
@@ -239,6 +250,10 @@ def GET_run(request):
         abort(400)
     run_id = args['run_id']
 
+    logger.log_struct({
+        "level": "info",
+        "message": f"Processing GET_run(run_id={run_id})."
+    })
     try:
         response = run_get(run_id)        
     except:

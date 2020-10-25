@@ -10,7 +10,7 @@ setup(
     ],
     extras_require={'develop': [
         'alembic', 'pylint', 'pytest', 'functions-framework', 'firebase-admin',
-        'google-cloud-logging'
+        'google-cloud-logging', 'pg8000'
     ]},
     entry_points='''
         [console_scripts]
