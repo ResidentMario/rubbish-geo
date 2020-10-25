@@ -57,19 +57,25 @@ exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{run
           geometry: geometry
         };
       });
-      payload = {firebaseID: payload}
+      payload = {[firebaseID]: payload}
 
+      const log_ids = payload[firebaseID].map(e => e.firebase_run_id);
+      functions.logger.info(
+        `Processing proxy_POST_pickups({${firebaseID}: ...${log_ids}}).`
+      );
       // eslint-disable-next-line promise/no-nesting
       return axios.post(private_api_endpoint_url, payload).then(resp => {
         functions.logger.info(
           `proxy_POST_pickups POST of the run with firebaseRunID ${firebaseRunID} was successful.`
         );
         return;
-      }).catch((err) =>
+      }).catch((err) => {
         functions.logger.error(
           `The proxy_POST_pickups authentication proxy failed to POST to the ` +
-          `POST_pickups private API endpoint: `, err
-        )
+          `POST_pickups private API endpoint. Failed with ${err.name}: ${err.message}`
+        );
+        throw err;
+      }
       );
     }));
   });

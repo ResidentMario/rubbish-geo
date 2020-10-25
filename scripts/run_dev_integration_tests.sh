@@ -55,6 +55,9 @@ echo "Shutting down cloud sql proxy..."
 # NOTE(aleksey): if you ever need to kill manually see https://stackoverflow.com/a/3855359/1993206
 kill -s SIGSTOP %1
 
-# TODO: re-expose these
-# echo "Running database proxy integration tests..."
-# pushd $RUBBISH_BASE_DIR/js 1>&0 && npm run test:dev && popd 1>&0
+echo "Running database proxy integration tests..."
+pushd $RUBBISH_BASE_DIR/js 1>&0 && npm run test:dev && popd 1>&0
+
+echo "Hint. To verify that the database proxy test succeeded, run: "
+echo "$ gcloud logging read projects/$GCP_PROJECT/logs/private_api --freshness=5m"
+echo "Note that it may take some time for logs to propagate."
