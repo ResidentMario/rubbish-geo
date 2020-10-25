@@ -16,13 +16,13 @@ We hope to use it to eventually build out a community "trash map", helping organ
 ├── python/
 │   ├── rubbish_geo_client/   <- Python package encapsulating client logic.
 │   ├── rubbish_geo_admin/    <- Python package encapsulating database admin.
-│   ├── rubbish_geo_common/   <- Python package for shared code, e.g. test utils.
-│   ├── functions/            <- Private API functions code.
-│   └── migrations/           <- Database migrations (managed with alembic).
+│   ├── rubbish_geo_common/   <- Python package for shared code and fixtures.
+│   ├── functions/            <- Functional API functions code.
+│   └── migrations/           <- Database migrations.
 ├── scripts/                  <- Administrative scripts.
 │   ├── deploy_postgis_db.sh  <- Database deploy and/or migration script.
-│   ├── deploy_private_api.sh <- Deploys the cloud function private API.
-│   ├── deploy_private_api.sh <- Deploys the cloud function private API.
+│   ├── deploy_functional_api.sh  <- Deploys the functional API.
+│   ├── deploy_functional_api.sh  <- Deploys the functional API.
 │   ├── deploy_auth_proxy.sh  <- Deploys the firebase functions auth proxy.
 │   └── run_local_integration_tests.sh  <- Runs integration tests locally.
 ├── js/
@@ -71,7 +71,7 @@ $ export RUBBISH_GEO_ENV=prod
 $ ./deploy_postgis_db.sh
 # the connection string is output from the previous step.
 $ export RUBBISH_POSTGIS_CONNSTR=$1
-$ ./deploy_private_api.sh
+$ ./deploy_functional_api.sh
 # make sure you are authenticated to the right firebase project!
 # TODO: what does this mean though?
 $ ./deploy_auth_proxy.sh

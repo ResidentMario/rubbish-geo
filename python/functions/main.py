@@ -1,5 +1,5 @@
 """
-Cloud functions defining the rubbish-geo private API.
+Cloud functions defining the rubbish-geo functional API.
 """
 from flask import abort
 from firebase_admin.auth import verify_id_token
@@ -31,7 +31,7 @@ class LogHandler:
             logging.basicConfig(level=logging.INFO)
         else:  # [dev, prod]
             self.client = Client()
-            self.logger = self.client.logger("private_api")
+            self.logger = self.client.logger("functional_api")
     
     def log_struct(self, struct):
         level = struct.get("level", "info")

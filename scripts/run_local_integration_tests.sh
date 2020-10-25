@@ -22,25 +22,25 @@ done
 
 ./reset_local_postgis_db.sh
 
-echo "Starting private API POST_pickups emulator..."
+echo "Starting functional API POST_pickups emulator..."
 pushd ../ 1>&0 && export RUBBISH_BASE_DIR=$(echo $PWD) && popd 1>&0
 export RUBBISH_POSTGIS_CONNSTR="postgresql://rubbish-test-user:polkstreet@localhost:5432/rubbish"
 functions-framework --source $RUBBISH_BASE_DIR/python/functions/main.py \
     --port 8081 --target POST_pickups --debug &
 
-echo "Starting private API GET emulator..."
+echo "Starting functional API GET emulator..."
 functions-framework --source $RUBBISH_BASE_DIR/python/functions/main.py \
     --port 8082 --target GET --debug &
 
 echo "Sleeping for five seconds to give the emulators time to start up..."
 sleep 5
 
-echo "Running private API integration test..."
+echo "Running functional API integration test..."
 export GOOGLE_APPLICATION_CREDENTIALS=$RUBBISH_BASE_DIR/js/serviceAccountKey.json
 export RUBBISH_GEO_ENV="local"
-PRIVATE_API_HOST="http://localhost:8081" \
+FUNCTIONAL_API_HOST="http://localhost:8081" \
     pytest $RUBBISH_BASE_DIR/python/functions/tests/tests.py -k POST_pickups || true
-PRIVATE_API_HOST="http://localhost:8082" \
+FUNCTIONAL_API_HOST="http://localhost:8082" \
     pytest $RUBBISH_BASE_DIR/python/functions/tests/tests.py -k GET || true
 
 echo "Starting authentication API emulator and running authentication proxy integration test..."

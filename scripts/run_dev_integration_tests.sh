@@ -47,8 +47,8 @@ GCP_PROJECT=$(gcloud config get-value project)
 REGION=us-central1  # currently a hardcoded value
 GET_URL=https://$REGION-$GCP_PROJECT.cloudfunctions.net/GET
 
-echo "Running private API integration tests..."
-PRIVATE_API_HOST=$GET_URL RUBBISH_POSTGIS_CONNSTR=$RUBBISH_POSTGIS_CONNSTR \
+echo "Running functional API integration tests..."
+FUNCTIONAL_API_HOST=$GET_URL RUBBISH_POSTGIS_CONNSTR=$RUBBISH_POSTGIS_CONNSTR \
     pytest $RUBBISH_BASE_DIR/python/functions/tests/tests.py -k GET || true
 
 echo "Shutting down cloud sql proxy..."
@@ -59,5 +59,5 @@ echo "Running database proxy integration tests..."
 pushd $RUBBISH_BASE_DIR/js 1>&0 && npm run test:dev && popd 1>&0
 
 echo "Hint. To verify that the database proxy test succeeded, run: "
-echo "$ gcloud logging read projects/$GCP_PROJECT/logs/private_api --freshness=5m"
+echo "$ gcloud logging read projects/$GCP_PROJECT/logs/functional_api --freshness=5m"
 echo "Note that it may take some time for logs to propagate."

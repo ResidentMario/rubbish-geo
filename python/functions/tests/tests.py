@@ -1,5 +1,5 @@
 """
-Tests the functions in the private `rubbish-geo` API.
+Tests the functions in the functional `rubbish-geo` API.
 
 Be sure to stand up the function emulator first.
 """
@@ -27,7 +27,7 @@ import firebase_admin.auth
 # auth inside of the Firebase project.
 # 
 # Firebase provides a verify_id_token method for verifying ID tokens but no equivalent for minting
-# them. The private API expects this token to be set (for user authentication and security
+# them. The functional API expects this token to be set (for user authentication and security
 # purposes). This means that we have to deploy an advanced pattern from the follow SO thread:
 # https://stackoverflow.com/q/41989345/1993206. The answers here are out of date due to recent
 # deprecations on Google's end, but do lead to the correction solution here:
@@ -64,10 +64,10 @@ print(id_token)
 
 headers = {"Authorization": f"Bearer {id_token}"}
 
-if "PRIVATE_API_HOST" not in os.environ:
+if "FUNCTIONAL_API_HOST" not in os.environ:
     F_URL = "http://localhost:8081"
 else:
-    F_URL = os.environ["PRIVATE_API_HOST"]
+    F_URL = os.environ["FUNCTIONAL_API_HOST"]
 
 class Test_POST_pickups(unittest.TestCase):
     @clean_db
