@@ -102,7 +102,7 @@ def POST_pickups(request):
     request = request.get_json()
     logger.log_struct({
         "level": "info",
-        "message": f"Processing POST_pickups(...[{list(request.keys())}])."
+        "message": f"Processing POST_pickups(...{list(request.keys())})."
     })
 
     for firebase_run_id in request:
