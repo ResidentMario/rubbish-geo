@@ -124,9 +124,6 @@ gcloud functions deploy POST_pickups \
     --set-env-vars="RUBBISH_POSTGIS_CONNSTR=$RUBBISH_POSTGIS_CONNSTR,RUBBISH_GEO_ENV=$RUBBISH_GEO_ENV" \
     --service-account=$SERVICE_ACCOUNT \
     --trigger-http
-# TODO: make this not publicly visible. Requires:
-# https://cloud.google.com/functions/docs/securing/authenticating#function-to-function
-gcloud functions add-iam-policy-binding POST_pickups --member=allUsers --role=roles/cloudfunctions.invoker
 echo "Deployed function POST_pickups successfully. ✔️"
 
 # NOTE(aleksey): this function will be called by clients (application end users) that have
