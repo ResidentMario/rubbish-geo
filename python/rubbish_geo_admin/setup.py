@@ -9,7 +9,8 @@ setup(
         'rich', 'scipy'
     ],
     extras_require={'develop': [
-        'alembic', 'pylint', 'pytest', 'functions-framework', 'firebase-admin'
+        'alembic', 'pylint', 'pytest', 'functions-framework', 'firebase-admin',
+        'google-cloud-logging', 'pg8000'
     ]},
     entry_points='''
         [console_scripts]

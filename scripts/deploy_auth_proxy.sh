@@ -20,16 +20,4 @@ fi
 echo "Deploy firebase functions...⚙️"
 pushd ../js && firebase deploy --only functions:proxy_POST_PICKUPS && popd
 
-# NOTE(aleksey): you use gcloud authentication when deploying the cloud function, but to actually
-# hit the deployed services from your local machine, a Firebase Admin SDK token is required. Super
-# weird.
-#
-# While not strictly necessary to succeed in running this script, I've added a check here to help
-# prevent user surprise when the integration tests don't work.
-if [[ ! -f "../js/serviceAccountKey.json" ]]; then
-    echo "WARNING: the /js/serviceAccountKey.json file does not exist."
-    echo "You will not be able to run integration tests until you create it!"
-    echo "See further https://firebase.google.com/docs/admin/setup#initialize-sdk."
-fi
-
 echo "All done! To see the functions deployed visit https://console.firebase.google.com/project/$GCP_PROJECT/functions/list."

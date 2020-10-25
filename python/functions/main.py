@@ -10,6 +10,45 @@ import os
 from rubbish_geo_client import write_pickups, radial_get, sector_get, coord_get, run_get
 from rubbish_geo_common.db_ops import get_db
 
+import sys
+import traceback
+from google.cloud.logging.client import Client
+import logging
+import json
+import inspect
+
+if 'RUBBISH_GEO_ENV' not in os.environ:
+    raise OSError("RUBBISH_GEO_ENV environment variable not set, exiting.")
+RUBBISH_GEO_ENV = os.environ.get('RUBBISH_GEO_ENV')
+if RUBBISH_GEO_ENV not in ['local', 'dev', 'prod']:
+    raise ValueError(
+        'RUBBISH_GEO_ENV environment variable not understood. Must be one of {local, dev, prod}.'
+    )
+
+class LogHandler:
+    def __init__(self):
+        if RUBBISH_GEO_ENV == "local":
+            logging.basicConfig(level=logging.INFO)
+        else:  # [dev, prod]
+            self.client = Client()
+            self.logger = self.client.logger("private_api")
+    
+    def log_struct(self, struct):
+        level = struct.get("level", "info")
+        if level == "error":
+            struct['traceback'] = traceback.format_exc()
+        
+        # SO#57712700
+        struct["caller"] = inspect.currentframe().f_back.f_code.co_name
+
+        if RUBBISH_GEO_ENV == "local":
+            getattr(logging, level)(json.dumps(struct))
+        else:  # [dev, prod]
+            self.logger.log_struct(struct)
+
+logger = LogHandler()
+sys.tracebacklimit = 5
+
 # NOTE(aleksey): calling verify_id_token requires initializing the app. You do not
 # need to be authenticated to the specific project that minted the token in order to be able to
 # verify its authenticity, but such requests are rate-limited and will raise a warning stating as
@@ -23,7 +62,7 @@ app = initialize_app()
 # establish the connection exists (otherwise Linux will error out). "/cloudsql" is the
 # (hard-coded) folder path we'll use. See the following page in the GCP documentation:
 # https://cloud.google.com/sql/docs/postgres/connect-functions.
-if 'RUBBISH_GEO_ENV' in os.environ and os.environ['RUBBISH_GEO_ENV'] != 'local':
+if RUBBISH_GEO_ENV != 'local':
     try:
         os.mkdir("/cloudsql")
     # cloud functions recycle disks, so a previous deploy may have created the path already
@@ -53,17 +92,32 @@ def POST_pickups(request):
     """
     try:
         get_db()
-    except ValueError:
-        raise ValueError(
-            "Could not connect to the database. Did you forget to set RUBBISH_POSTGIS_CONNSTR?"
-        )
+    except:
+        logger.log_struct({
+            "level": "error",
+            "message": "Could not connect to the database."
+        })
+        abort(400)
 
     request = request.get_json()
+    logger.log_struct({
+        "level": "info",
+        "message": f"Processing POST_pickups(...[{list(request.keys())}])."
+    })
+
     for firebase_run_id in request:
         run = request[firebase_run_id]
         for pickup in run:
             pickup['geometry'] = shapely.wkt.loads(pickup['geometry'])
-        write_pickups(run)
+        try:
+            write_pickups(run)
+        except:
+            logger.log_struct({
+                "level": "error",
+                "message": "Run write did not succeed."
+            })
+            abort(400)
+    
     return {"status": 200}
 
 def GET_radial(request):
@@ -79,13 +133,34 @@ def GET_radial(request):
     """
     args = request.args
     if 'x' not in args or 'y' not in args or 'distance' not in args:
-        raise ValueError("This request is missing required 'coord' or 'distance' URL parameters.")
+        logger.log_struct({
+            "level": "warning",
+            "message": "Request is missing required URL parameters.",
+        })
+        abort(400)
+
     x = float(args['x'])
     y = float(args['y'])
     distance = int(args['distance'])
     include_na = args['include_na'].title() == 'True' if 'include_na' in args else False
     offset = int(args['offset']) if 'offset' in args else 0
-    return {"blockfaces": radial_get((x, y), distance, include_na=include_na, offset=offset)}
+
+    logger.log_struct({
+        "level": "info",
+        "message": f"Processing GET_radial(x={x}, y={y}, distance={distance}, "
+                   f"include_na={include_na}, offset={offset})."
+    })
+
+    try:
+        response = radial_get((x, y), distance, include_na=include_na, offset=offset)
+    except:
+        logger.log_struct({
+            "level": "error",
+            "message": "radial_get call failed."
+        })
+        abort(400)
+
+    return {"status": 200, "blockfaces": response}
 
 def GET_sector(request):
     """
@@ -98,12 +173,30 @@ def GET_sector(request):
     """
     args = request.args
     if 'sector_name' not in args:
-        raise ValueError("This request is missing required 'sector_name' URL parameter.")
+        logger.log_struct({
+            "level": "warning",
+            "message": "Request is missing required URL parameters.",
+        })
+        abort(400)
     sector_name = args['sector_name']
     include_na = args['include_na'].title() == 'True' if 'include_na' in args else False
     offset = int(args['offset']) if 'offset' in args else 0
+    logger.log_struct({
+        "level": "info",
+        "message": f"Processing GET_sector(sector_name={sector_name}, "
+                   f"include_na={include_na}, offset={offset})."
+    })
 
-    return {"blockfaces": sector_get(sector_name, include_na=include_na, offset=offset)}
+    try:
+        response = sector_get(sector_name, include_na=include_na, offset=offset)
+    except:
+        logger.log_struct({
+            "level": "error",
+            "message": "sector_get call failed."
+        })
+        abort(400)
+
+    return {"blockfaces": response}
 
 def GET_coord(request):
     """
@@ -117,12 +210,29 @@ def GET_coord(request):
     """
     args = request.args
     if 'x' not in args or 'y' not in args:
-        raise ValueError("This request is missing the required 'x' or 'y' URL parameter.")
+        logger.log_struct({
+            "level": "warning",
+            "message": "Request is missing required URL parameters.",
+        })
+        abort(400)
     x = float(args['x'])
     y = float(args['y'])
     include_na = args['include_na'].title() == 'True' if 'include_na' in args else False
 
-    return {"blockfaces": coord_get((x, y), include_na=include_na)}
+    try:
+        response = coord_get((x, y), include_na=include_na)
+    except:
+        logger.log_struct({
+            "level": "error",
+            "message": "coord_get call failed."
+        })
+        abort(400)
+    logger.log_struct({
+        "level": "info",
+        "message": f"Processing GET_coord(x={x}, y={y}, include_na={include_na})."
+    })
+
+    return {"status": 200, "blockfaces": response}
 
 def GET_run(request):
     """
@@ -133,10 +243,27 @@ def GET_run(request):
     """
     args = request.args
     if 'run_id' not in args:
-        raise ValueError("This request is missing the required 'run_id' URL parameter.")
+        logger.log_struct({
+            "level": "warning",
+            "message": "Request is missing required URL parameters.",
+        })
+        abort(400)
     run_id = args['run_id']
 
-    return {"blockfaces": run_get(run_id)}
+    logger.log_struct({
+        "level": "info",
+        "message": f"Processing GET_run(run_id={run_id})."
+    })
+    try:
+        response = run_get(run_id)        
+    except:
+        logger.log_struct({
+            "level": "error",
+            "message": "run_get call failed."
+        })
+        abort(400)
+
+    return {"blockfaces": response}
 
 def GET(request):
     """
@@ -145,19 +272,34 @@ def GET(request):
     """
     args = request.args
     if 'request_type' not in args:
-        # raise ValueError("This request is missing the required 'request_type' URL parameter.")
+        logger.log_struct({
+            "level": "warning",
+            "message": "Request is missing the required 'request_type' URL param, returning 403."
+        })
         abort(403)
 
     authorization = request.headers.get('Authorization')
     if authorization is None:
+        logger.log_struct({
+            "level": "warning",
+            "message": "Request has no authorization header, returning 403."
+        })
         abort(403)
     try:
         id_token = authorization.split("Bearer ")[1]
     except (ValueError, IndexError):
+        logger.log_struct({
+            "level": "warning",
+            "message": "Request authorization header is invalid, returning 403."
+        })
         abort(403)
     try:
         verify_id_token(id_token, app=app, check_revoked=False)
     except:
+        logger.log_struct({
+            "level": "warning",
+            "message": "Request authorization header failed validation, returning 403."
+        })
         abort(403)
 
     t = args['request_type']
@@ -170,8 +312,8 @@ def GET(request):
     elif t == 'radial':
         return GET_radial(request)
     else:
-        # raise ValueError(
-        #     f"Received request with invalid 'request_type' value {t!r}. 'request_type' must be "
-        #     f"one of 'run', 'sector', 'coord', or 'radial'."
-        # )
+        logger.log_struct({
+            "level": "warning",
+            "message": "Request has invalid 'request_type', returning 400."
+        })
         abort(400)
