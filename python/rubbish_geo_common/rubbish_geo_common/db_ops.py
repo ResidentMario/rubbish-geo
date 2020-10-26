@@ -15,7 +15,7 @@ from rubbish_geo_common.orm import (
 
 APPDIR = pathlib.Path(click.get_app_dir("rubbish", force_posix=True))
 
-def set_db(dbstr, profile=None):
+def set_db(dbstr, conntype, profile=None):
     """
     Sets the target database connection string (writing the input value to disk).
     """
@@ -29,7 +29,7 @@ def set_db(dbstr, profile=None):
     cfg = configparser.ConfigParser()
     if cfg_fp.exists():
         cfg.read(cfg_fp)
-    cfg[profile] = {'connstr': dbstr}
+    cfg[profile] = {'connstr': dbstr, 'type': conntype}
     with open(cfg_fp, "w") as f:
         cfg.write(f)
 
@@ -43,7 +43,7 @@ def get_db_cfg():
 
 def get_db(profile=None):
     """
-    Gets the current database. Returns None if unset.
+    Gets the database connection string and type.
     """
     if 'RUBBISH_POSTGIS_CONNSTR' in os.environ:
         return os.environ['RUBBISH_POSTGIS_CONNSTR']
@@ -52,7 +52,7 @@ def get_db(profile=None):
         profile = 'default'
 
     cfg = get_db_cfg()
-    return cfg[profile]['connstr']
+    return cfg[profile]['connstr'], cfg[profile]['type']
 
 def db_sessionmaker(profile=None):
     """
@@ -61,7 +61,7 @@ def db_sessionmaker(profile=None):
     if profile is None:
         profile = 'default'
     
-    connstr = get_db(profile=profile)
+    connstr, _ = get_db(profile=profile)
     if connstr == None:
         raise ValueError("connection string not set, run set_db first")
     engine = sa.create_engine(connstr)

@@ -9,7 +9,7 @@ import subprocess
 from rubbish_geo_common.db_ops import set_db as _set_db, reset_db as _reset_db, get_db as _get_db
 from .ops import (
     update_zone as _update_zone, insert_sector as _insert_sector, delete_sector as _delete_sector,
-    show_sectors as _show_sectors, show_zones as _show_zones, show_dbs
+    show_sectors as _show_sectors, show_zones as _show_zones, show_dbs, run_cloud_sql_proxy
 )
 
 @click.group()
@@ -23,11 +23,16 @@ def connect(profile):
     if sp.returncode != 0:
         print("psql not installed, install that first.")
         return
-    connstr = _get_db(profile=profile)
+    psql = sp.stdout.decode("utf-8").rstrip()
+    connstr, conntype = _get_db(profile=profile)
     if connstr == None:
         print("database not set, set that first with set_db")
         return
-    psql = sp.stdout.decode("utf-8").rstrip()
+    if conntype not in ["local", "gcp"]:
+        print(f"connection type {conntype!r} not understood, must be one of [local, gcp]")
+    if conntype == "gcp":
+        run_cloud_sql_proxy()
+    return
     os.execl(psql, psql, connstr)
 
 @click.command(name="get-db", short_help="Prints the DB connection strings.")
@@ -36,7 +41,7 @@ def get_db(profile):
     if profile is None:
         show_dbs()
     else:
-        connstr = _get_db(profile=profile)
+        connstr, _ = _get_db(profile=profile)
         if connstr:
             print(connstr)
         else:
@@ -44,9 +49,10 @@ def get_db(profile):
 
 @click.command(name="set-db", short_help="Set the DB connection string.")
 @click.argument("dbstr")
+@click.argument("conntype")
 @click.option("-p", "--profile", help="Optional profile. If not set uses default profile.")
-def set_db(dbstr, profile):
-    _set_db(dbstr, profile=profile)
+def set_db(dbstr, conntype, profile):
+    _set_db(dbstr, conntype, profile=profile)
 
 @click.command(name="reset-db", short_help="Reset the DB.")
 @click.option("-p", "--profile", help="Optional profile. If not set uses default profile.")
