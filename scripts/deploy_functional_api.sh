@@ -63,7 +63,6 @@ fi
 # Next, verify that the service account the function will use has high enough permissions.
 # The service account used needs to have roles/firebase.admin, roles/logging.admin, and
 # roles/cloudsql.client permissions.
-# TODO: tighten the service account permissions.
 echo "Verifying service account...🥕"
 if [[ ! -f "../python/functions/serviceAccountKey.json" ]]; then
     echo "ERROR: to deploy the functional API, you must have a private key associated with the "

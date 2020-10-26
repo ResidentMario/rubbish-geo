@@ -394,7 +394,6 @@ class TestSectorGet(unittest.TestCase):
         from rubbish_geo_admin.ops import insert_sector
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            # TODO: generalize this across both here and admin/tests.py as a util.
             poly = Polygon([[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]])
             filepath = tmpdir.rstrip("/") + "/" + "sector-polygon.geojson"
             gpd.GeoDataFrame(geometry=[poly]).to_file(filepath, driver="GeoJSON")

@@ -321,8 +321,6 @@ def write_pickups(pickups, check_distance=True):
             # Use the user-set value if it's present, otherwise pick the closest match.
             for i, pickup in enumerate(pickups):
                 if pickup['curb'] is None:
-                    # TODO: refactor to just use 0/1 everywhere instead of 'left'/'right'
-                    side_str = 'left' if sides[i] == 0 else 'right'
                     pickup['curb'] = sides[i]
 
     # From this point on, assume all curbs are set.
