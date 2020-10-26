@@ -5,6 +5,8 @@ The rubbish-admin CLI application.
 import click
 import os
 import subprocess
+import warnings
+import time
 
 from rubbish_geo_common.db_ops import set_db as _set_db, reset_db as _reset_db, get_db as _get_db
 from .ops import (
@@ -24,15 +26,27 @@ def connect(profile):
         print("psql not installed, install that first.")
         return
     psql = sp.stdout.decode("utf-8").rstrip()
-    connstr, conntype = _get_db(profile=profile)
+    connstr, conntype, _ = _get_db(profile=profile)
     if connstr == None:
         print("database not set, set that first with set_db")
         return
     if conntype not in ["local", "gcp"]:
         print(f"connection type {conntype!r} not understood, must be one of [local, gcp]")
+
     if conntype == "gcp":
-        run_cloud_sql_proxy()
-    return
+        # TODO: find a more elegant way of doing this -- execl is an exec process replacement, so
+        # we actually currently orphan the cloud_sql_proxy background process as written.
+        cloud_sql_proxy_process = run_cloud_sql_proxy(profile=profile)
+        print("Waiting five seconds for cloud_sqp_proxy to start...")
+        print(
+            "WARNING: after exiting psql you will still have a cloud_sql_proxy listener on "
+            "port 5432. To get rid of it find the PID of the process and kill it manually:\n"
+            "$ lsof -i tcp:5432\n"
+            "$ kill -s SIGTERM $PID\n"
+            "A more elegant way of doing this is a TODO."
+        )
+        time.sleep(5)
+        # cloud_sql_proxy_process.terminate()
     os.execl(psql, psql, connstr)
 
 @click.command(name="get-db", short_help="Prints the DB connection strings.")
@@ -41,8 +55,15 @@ def get_db(profile):
     if profile is None:
         show_dbs()
     else:
-        connstr, _ = _get_db(profile=profile)
+        connstr, conntype, _ = _get_db(profile=profile)
         if connstr:
+            if conntype == "gcp":
+                warnings.warn(
+                    "This is a GCP database, and GCP does not allow direct connections to Cloud "
+                    "SQL. In order to connect to this database, you will first need to start up "
+                    "a cloud_sql_proxy daemon process. To do this automatically use:\n"
+                    f"$ rubbish-admin connect --profile {profile}"
+                )
             print(connstr)
         else:
             print("Connection string not set.")
@@ -50,9 +71,10 @@ def get_db(profile):
 @click.command(name="set-db", short_help="Set the DB connection string.")
 @click.argument("dbstr")
 @click.argument("conntype")
+@click.option("-c", "--conname", help="Optional connection name. Required if conntype is GCP.")
 @click.option("-p", "--profile", help="Optional profile. If not set uses default profile.")
-def set_db(dbstr, conntype, profile):
-    _set_db(dbstr, conntype, profile=profile)
+def set_db(dbstr, conntype, conname, profile):
+    _set_db(dbstr, conntype, conname, profile=profile)
 
 @click.command(name="reset-db", short_help="Reset the DB.")
 @click.option("-p", "--profile", help="Optional profile. If not set uses default profile.")
