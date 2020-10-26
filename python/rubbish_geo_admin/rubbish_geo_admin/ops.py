@@ -117,6 +117,50 @@ def _poly_wkb_to_bounds_str(wkb):
     bounds = str(tuple(f'{v:.4f}' for v in bounds)).replace("'", "")
     return bounds
 
+def run_cloud_sql_proxy(profile=None, force_download=False):
+    """
+    Internal method. Does the song and dance Google requires to shell psql through to a DB.
+    """
+    print("GOT TO METHOD")
+    import pathlib
+    import click
+    import subprocess
+    import socket
+    import stat
+    import requests
+
+    if profile is None:
+        profile = 'default'
+
+    APPDIR = pathlib.Path(click.get_app_dir("rubbish", force_posix=True))
+    outpath = APPDIR / "cloud_sql_proxy"
+    if not outpath.exists() or force_download:
+        # this is the macOS path, so this method only currently works on macOS
+        dl_url = "https://dl.google.com/cloudsql/cloud_sql_proxy.darwin.amd64"
+        proxy_bytes = requests.get(dl_url)
+        proxy_bytes.raw.decode_content = True
+        with open(outpath, "wb") as f:
+            f.write(proxy_bytes.content)
+
+        try:
+            os.chmod(outpath, stat.S_IEXEC)
+        except OSError:
+            raise OSError(
+                "Could not mark the cloud_sql_proxy script as executable. You may have to do "
+                "this yourself: run 'chmod +x ~/.rubbish/cloud_sql_proxy' in the terminal."
+            )
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        port_occupied = s.connect_ex(('localhost', 5432)) == 0
+    if port_occupied:
+        raise OSError(
+            "This method needs to launch the cloud_sql_proxy daemon on port 5432, but port is "
+            "already in use. You will have to free the port first."
+        )
+
+    _, _, conname = get_db(profile=profile)
+    return subprocess.Popen([f"{outpath.as_posix()}", f"-instances={conname}=tcp:5432"])
+
 def update_zone(osmnx_name, name, centerlines=None, profile=None):
     """
     Updates a zone, plopping the new centerlines into the database.
@@ -203,7 +247,8 @@ def update_zone(osmnx_name, name, centerlines=None, profile=None):
     bbox = f'SRID=4326;{str(poly)}'
     zone.bounding_box = bbox
 
-    conn = sa.create_engine(get_db())
+    connstr, _, _ = get_db()
+    conn = sa.create_engine(connstr)
 
     # Cap the previous centerline generations (see previous comment).
     previously_current_centerlines = (session
@@ -271,17 +316,34 @@ def show_zones(profile=None):
         console.print(table)
 
 def show_dbs():
-    """Pretty-prints a list of database connection strings."""
+    """
+    Pretty-prints database connection information. Splits printing across two tables because the
+    strings are very long and don't fit into a typical console window otherwise.
+    """
     cfg = get_db_cfg()
     console = Console()
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("Profile", justify="left")
-    table.add_column("Value", justify="left")
+    table.add_column("Type", justify="left")
+    table.add_column("Connection String", justify="left")
     for profile in cfg:
         if profile == 'DEFAULT':
             continue
-        value = cfg[profile]['connstr']
-        table.add_row(profile, value)
+        connstr = cfg[profile]['connstr']
+        conntype = cfg[profile]['type']
+        table.add_row(profile, conntype, connstr)
+    console.print(table)
+
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Profile", justify="left")
+    table.add_column("Type", justify="left")
+    table.add_column("Connection Name", justify="left")
+    for profile in cfg:
+        if profile == 'DEFAULT':
+            continue
+        conname = cfg[profile]['conname']
+        conntype = cfg[profile]['type']
+        table.add_row(profile, conntype, conname)
     console.print(table)
 
 def _validate_sector_geom(filepath):
@@ -360,4 +422,7 @@ def show_sectors(profile=None):
         table.add_row(str(sector.id), sector.name, bounds)
     console.print(table)
 
-__all__ = ['update_zone', 'show_zones', 'insert_sector', 'delete_sector', 'show_sectors']
+__all__ = [
+    'update_zone', 'show_zones', 'insert_sector', 'delete_sector', 'show_sectors',
+    'run_cloud_sql_proxy'
+]

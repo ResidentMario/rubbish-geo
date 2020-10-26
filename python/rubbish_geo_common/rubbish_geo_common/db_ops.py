@@ -15,12 +15,23 @@ from rubbish_geo_common.orm import (
 
 APPDIR = pathlib.Path(click.get_app_dir("rubbish", force_posix=True))
 
-def set_db(dbstr, profile=None):
+def set_db(dbstr, conntype, conname=None, profile=None):
     """
-    Sets the target database connection string (writing the input value to disk).
+    Sets the target database connection settings (writing the input value to disk).
     """
+    if conntype not in ["local", "gcp"]:
+        raise ValueError("conntype must be set to one of [local, gcp].")
     if profile is None:
         profile = 'default'
+    if conname is None:
+        if conntype == 'gcp':
+            raise ValueError(
+                "Databases of the 'gcp' type must specify a connection name, as this value "
+                "is required by the GCP cloud_sql_proxy. For more information refer to "
+                "https://cloud.google.com/sql/docs/postgres/sql-proxy."
+            )
+        else:
+            conntype = 'unset'
 
     if not APPDIR.exists():
         os.makedirs(APPDIR)
@@ -29,7 +40,7 @@ def set_db(dbstr, profile=None):
     cfg = configparser.ConfigParser()
     if cfg_fp.exists():
         cfg.read(cfg_fp)
-    cfg[profile] = {'connstr': dbstr}
+    cfg[profile] = {'connstr': dbstr, 'type': conntype, 'conname': conname}
     with open(cfg_fp, "w") as f:
         cfg.write(f)
 
@@ -43,7 +54,9 @@ def get_db_cfg():
 
 def get_db(profile=None):
     """
-    Gets the current database. Returns None if unset.
+    Gets the database connection string (what gets passed to psql or sqlalchemy at runtime), type
+    (local or gcp), and connection name (used by the cloud_sql_proxy and required for local
+    connections to GCP databases.
     """
     if 'RUBBISH_POSTGIS_CONNSTR' in os.environ:
         return os.environ['RUBBISH_POSTGIS_CONNSTR']
@@ -52,7 +65,7 @@ def get_db(profile=None):
         profile = 'default'
 
     cfg = get_db_cfg()
-    return cfg[profile]['connstr']
+    return cfg[profile]['connstr'], cfg[profile]['type'], cfg[profile]['conname']
 
 def db_sessionmaker(profile=None):
     """
@@ -61,7 +74,7 @@ def db_sessionmaker(profile=None):
     if profile is None:
         profile = 'default'
     
-    connstr = get_db(profile=profile)
+    connstr, _, _ = get_db(profile=profile)
     if connstr == None:
         raise ValueError("connection string not set, run set_db first")
     engine = sa.create_engine(connstr)
