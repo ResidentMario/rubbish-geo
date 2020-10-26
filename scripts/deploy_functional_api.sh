@@ -60,20 +60,28 @@ else
     gsutil mb $GCS_STAGE_BUCKET
 fi
 
-# Next, verify that the service account the function will use has high enough permissions.
-# The service account used needs to have roles/firebase.admin, roles/logging.admin, and
-# roles/cloudsql.client permissions.
+# If the functions' service account doesn't exist yet, create it. If it does, verify its perms.
 echo "Verifying service account...🥕"
-if [[ ! -f "../python/functions/serviceAccountKey.json" ]]; then
-    echo "ERROR: to deploy the functional API, you must have a private key associated with the "
-    echo "IAM service account the cloud functions will use saved to "
-    echo "/python/functions/serviceAccountKey.json on your local disk."
-    exit 1
+GCP_PROJECT=$(gcloud config get-value project)
+SERVICE_ACCOUNTS=$(gcloud iam service-accounts list --format json)
+SERVICE_ACCOUNT=rubbish-geo-functional-api@$GCP_PROJECT.iam.gserviceaccount.com
+echo $SERVICE_ACCOUNTS | \
+    grep "rubbish-geo-functional-api" 1>&0 && SERVICE_ACCOUNT_EXISTS=0 ||
+        SERVICE_ACCOUNT_EXISTS=1
+if [[ SERVICE_ACCOUNT_EXISTS -eq 1 ]]; then
+    echo "Functional API service account does not exist. Creating it now."
+    gcloud iam service-accounts create rubbish-geo-functional-api \
+        --description "Service account used by the Rubbish Geo functional API."
+    for ROLE in roles/cloudsql.client roles/logging.admin roles/firebase.admin
+    do
+        gcloud projects add-iam-policy-binding \
+            $GCP_PROJECT \
+            --member=serviceAccount:$SERVICE_ACCOUNT \
+            --role=$ROLE \
+            --quiet
+    done
 fi
-GOOGLE_APPLICATION_CREDENTIALS=$RUBBISH_BASE_DIR/python/functions/serviceAccountKey.json
-SERVICE_ACCOUNT=$(cat $GOOGLE_APPLICATION_CREDENTIALS | jq -r '.client_email')
-
-SERVICE_ACCOUNT_PERMS=$(gcloud projects get-iam-policy rubbish-ee2d0 --format json)
+SERVICE_ACCOUNT_PERMS=$(gcloud projects get-iam-policy $GCP_PROJECT --format json)
 echo $SERVICE_ACCOUNT_PERMS \
     jq -r '.bindings | map(select(.role == "roles/cloudsql.client")) | .[0].members' | \
     grep $SERVICE_ACCOUNT 1>&0 && CLOUD_SQL_CLIENT_PERMISSION_SET=0 ||

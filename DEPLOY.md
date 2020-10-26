@@ -19,23 +19,19 @@ Note that it is currently only possible to deploy on macOS.
 2. Navigate to [Project Settings](https://console.firebase.google.com/u/_/project/_/settings/serviceaccounts/adminsdk) in the Firebase web console and find the Firebase service account email (will be something like `firebase-adminsdk-$RANDOM@$PROJECT_ID.iam.gserviceaccount.com`). Click on "Generate new private key" (use default settings). Download the key file and place it at `js/serviceAccountKey.json`.
 
    Firebase will uses this private key to deploy.
-3. Navigate to the [IAM console](https://console.cloud.google.com/iam-admin/iam) for your project. Create a new service account (I suggest `rubbish-geo-functional-api-service@[...]`) and give it the following roles: Cloud SQL Client, Firebase Admin, Logging Admin.
-4. Create a new key for the service account you created in step 6. Download it and place it at `python/functions/serviceAccountKey.json`.
-
-    This service account will be attached to the functional API, which we will create in a future step.
-5. If you do not have `jq` ([a CLI string parsing tool](https://stedolan.github.io/jq/)), install it: `brew install jq`.
-6. Go to [Project Settings](https://console.firebase.google.com/u/1/project/rubbish-ee2d0/settings/general/ios:com.rubbish.rubbishapp) in the Firebase web console again. Find the web API key. Run `export WEB_API_KEY=$VALUE` in your terminal, replacing `$VALUE` with the web API key value.
-7. Run `export RUBBISH_GEO_ENV=$VALUE`, where `$VALUE` is one of `dev` or `prod`, depending on whether this is a dev or a prod deployment.
-8. Navigate to the `/scripts` directory in your terminal. Run `RUBBISH_GEO_POSTGRES_USER_PASSWORD=$VALUE1 RUBBISH_GEO_READ_WRITE_USER_PASSWORD=$VALUE2 ./deploy_postgis_db.sh`, replacing `$VALUE1` and `$VALUE2` with your preferred passwords for the `postgres` (default) and `read_write` (application) users, respectively.
+3. If you do not have `jq` ([a CLI string parsing tool](https://stedolan.github.io/jq/)), install it: `brew install jq`.
+4. Go to [Project Settings](https://console.firebase.google.com/u/1/project/rubbish-ee2d0/settings/general/ios:com.rubbish.rubbishapp) in the Firebase web console again. Find the web API key. Run `export WEB_API_KEY=$VALUE` in your terminal, replacing `$VALUE` with the web API key value.
+5. Run `export RUBBISH_GEO_ENV=$VALUE`, where `$VALUE` is one of `dev` or `prod`, depending on whether this is a dev or a prod deployment.
+6. Navigate to the `/scripts` directory in your terminal. Run `RUBBISH_GEO_POSTGRES_USER_PASSWORD=$VALUE1 RUBBISH_GEO_READ_WRITE_USER_PASSWORD=$VALUE2 ./deploy_postgis_db.sh`, replacing `$VALUE1` and `$VALUE2` with your preferred passwords for the `postgres` (default) and `read_write` (application) users, respectively.
 
     You may need to mark the shell script executable first: `chmod +x deploy_postgis_db.sh`.
 
     This will deploy the PostGIS database into your project, including any database migrations that are required. This may take a while.
-9. Once the database is up, go to the [Cloud SQL](https://console.cloud.google.com/sql/instances) page in the GCP web console and find the Postgres instance you just deployed. Export the instance connection name to your terminal window: `export  RUBBISH_POSTGIS_CONNECTION_NAME=rubbish-ee2d0:us-west1:rubbish-geo-postgis-db-4197`.
-10. Run `./deploy_functional_api.sh`. This will deploy the functional API. Again, expect to wait a few minutes before it finishes.
+7. Once the database is up, go to the [Cloud SQL](https://console.cloud.google.com/sql/instances) page in the GCP web console and find the Postgres instance you just deployed. Export the instance connection name to your terminal window: `export  RUBBISH_POSTGIS_CONNECTION_NAME=rubbish-ee2d0:us-west1:rubbish-geo-postgis-db-4197`.
+8. Run `./deploy_functional_api.sh`. This will deploy the functional API. Again, expect to wait a few minutes before it finishes.
 
     You can verify that it succeeded by visiting the Cloud Functions page in the GCP web console: this should now have `POST_pickups` and `GET` entries.
-11. Run `./deploy_db_listener.sh`. This will deploy the last bit of `rubbish-geo`: the database listener, responsible for keeping the user and analytics databases in sync.
+9. Run `./deploy_db_listener.sh`. This will deploy the last bit of `rubbish-geo`: the database listener, responsible for keeping the user and analytics databases in sync.
 
 ## Upgrade flow
 
