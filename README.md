@@ -11,8 +11,9 @@ We hope to use it to eventually build out a community "trash map", helping organ
 ## contents
 
 ```markdown
-├── LICENSE
-├── README.md                 <- You're reading it!
+├── README.md
+├── CONTRIBUTING.md
+├── DEPLOY.md
 ├── python/
 │   ├── rubbish_geo_client/   <- Python package encapsulating client logic.
 │   ├── rubbish_geo_admin/    <- Python package encapsulating database admin.
@@ -32,8 +33,6 @@ We hope to use it to eventually build out a community "trash map", helping organ
 ├── .travis.yml               <- Automated CI tests.
 └── Dockerfile.database       <- Dockerfile bundling the local test db.
 ```
-
-See the corresponding folders for setup instructions.
 
 ## architecture
 
@@ -56,32 +55,10 @@ This two-step design, using both Cloud Functions and Firestore Functions, has se
 * It enables the API logic to be written in Python (Firestore Functions are NodeJS-only), allowing us to use Python's rich geospatial tools for the backend logic and the middleware.
 * It maximizes local testability. The `GET` API is testable using `functions-framework`, the `POST` API using the [Firestore Emulator Suite](https://firebase.google.com/docs/emulator-suite).
 
-## deployment
+## deploy
 
-(note that these instructions are currently incomplete)
+See `DEPLOY.md` for first-deploy instructions.
 
-To deploy the services for the first time, make sure you are authenticated to the project you are deploying to, and have all of the things you need installed. Then run the following:
+## develop
 
-```bash
-$ cd scripts/
-# set these to the passwords you will use for the "postgres" (default) and "read_write" users in
-# the database
-$ export RUBBISH_GEO_POSTGRES_USER_PASSWORD=$1 RUBBISH_GEO_READ_WRITE_USER_PASSWORD=$1
-# set this to 'dev' or 'prod', depending on what environment you are deploying into
-$ export RUBBISH_GEO_ENV=prod
-$ ./deploy_postgis_db.sh
-# the connection string is output from the previous step.
-$ export RUBBISH_POSTGIS_CONNSTR=$1
-$ ./deploy_functional_api.sh
-# make sure you are authenticated to the right firebase project!
-# TODO: what does this mean though?
-$ ./deploy_db_listener.sh
-```
-
-Deploy scripts are idempotent, so you can easily redeploy just one part of the stack if needed. This is useful if you're working on just one part of the stack and need to update just that part (for example, you need to run the database migrations again).
-
-## testing
-
-Instructions on how to run local tests for each of the major components are included in `README` files in the project subdirectories, refer to those for more details on that.
-
-PRs are automatically tested using Travis CI. Local unit tests can be run using `run_local_unit_tests.sh` in `scripts/`. Local integration tests can be run using `run_local_integration_tests.sh`. Remote integration tests can be run using `run_dev_integration_tests.sh`.
+See `CONTRIBUTING.md` for development notes.
