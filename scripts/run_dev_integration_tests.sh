@@ -36,6 +36,7 @@ if [[ CLOUD_SQL_PROXY_INSTALLED -eq 1 ]]; then
         https://dl.google.com/cloudsql/cloud_sql_proxy.darwin.amd64
     chmod +x $RUBBISH_BASE_DIR/cloud_sql_proxy
 fi
+unset GOOGLE_APPLICATION_CREDENTIALS  # make cloud_sql_proxy use login auth
 $RUBBISH_BASE_DIR/cloud_sql_proxy -instances=$RUBBISH_POSTGIS_CONNECTION_NAME=tcp:5433 &
 RUBBISH_POSTGIS_CONNSTR=postgresql://read_write:$RUBBISH_GEO_READ_WRITE_USER_PASSWORD@localhost:5433/rubbish
 
