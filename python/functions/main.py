@@ -9,6 +9,7 @@ import os
 
 from rubbish_geo_client import write_pickups, radial_get, sector_get, coord_get, run_get
 from rubbish_geo_common.db_ops import get_db
+from rubbish_geo_common.consts import RUBBISH_TYPES
 
 import sys
 import traceback
@@ -102,13 +103,25 @@ def POST_pickups(request):
     request = request.get_json()
     logger.log_struct({
         "level": "info",
-        "message": f"Processing POST_pickups(...{list(request.keys())})."
+        "message": f"Processing POST_pickups({list(request.keys())})."
     })
 
     for firebase_run_id in request:
         run = request[firebase_run_id]
         for pickup in run:
             pickup['geometry'] = shapely.wkt.loads(pickup['geometry'])
+            # TODO: support custom pickup types.
+            pickup_type = pickup['type']
+            pickup_id = pickup['firebase_id']
+            if pickup_type not in RUBBISH_TYPES:
+                logger.log_struct({
+                    "level": "warning",
+                    "message": (
+                        f"Pickup {pickup_id!r} has custom pickup type {pickup_type!r}. "
+                        f"rubbish-geo does not support custom types yet. Replacing with 'other'."
+                    )
+                })
+                pickup['type'] = 'other'
         try:
             write_pickups(run)
         except:

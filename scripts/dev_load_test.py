@@ -1,3 +1,20 @@
+"""
+Dumps one or more runs from the dev user database into the local user database, thereby load
+testing the entire rubbish-admin flow to the PostGIS DB. Example command:
+
+$ python dev_load_test.py rSha3Lu56sOeTwt1RCHh --reset-db
+"""
+# NOTE(aleksey): in order to run this script, you must run the PostGIS database, the POST_pickups
+# emulator, and the Firebase Functions emulator *first*. See scripts/run_local_integration_tests
+# for the relevant code.
+#
+# At time of writing (and on my machine) this meant:
+# $ scripts/reset_local_postgis_db.sh
+# $ functions-framework --source $RUBBISH_BASE_DIR/python/functions/main.py \
+#     --port 8081 --target POST_pickups --debug
+# $ GOOGLE_APPLICATION_CREDENTIALS=/Users/alekseybilogur/Desktop/rubbish-geo/auth/devServiceAccountKey.json \
+#     firebase emulators:start
+
 from firebase_admin import firestore, initialize_app
 import os
 import pathlib
@@ -23,9 +40,6 @@ if __name__ == "__main__":
 
     # TODO: setting this environment variable points initialization at the local emulator instead
     # of at the project-configured endpoint. But this is ugly. There must be a cleaner way...
-    # NOTE(aleksey): for some reason this script doesn't work with prod. Writes succeed but no data
-    # lands in the local Firestore emulator. Without any errors to debug with, it's hard to say why
-    # that is, so we're going to have to constrain ourselves to the dev database for now.
     if 'GOOGLE_APPLICATION_CREDENTIALS' not in os.environ:
         key_fp = pathlib.Path('.').absolute().parent / 'auth'
         key_fp = key_fp / 'devServiceAccountKey.json'
@@ -78,8 +92,7 @@ if __name__ == "__main__":
             if not pickup_struct.exists:
                 undefined_entries += 1
                 continue
-            else:
-                pickup_struct = dictify(pickup_struct)
+            pickup_struct = dictify(pickup_struct)
             sink_pickups.document(pickup.id).set(pickup_struct)
 
         sink_stories.document(story.id).set(dictify(story))

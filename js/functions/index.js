@@ -17,14 +17,14 @@ if (process.env.RUBBISH_GEO_ENV === "local") {
   if (functional_api_endpoint_url  === undefined) {
     throw new Error(
       `functional_api.post_pickups_url environment configuration variable is not set. Did you forget` +
-      `to set it? For more information refer to the "configuration" section in the README.`
+      `to set it? For more information refer to DEPLOY.md.`
     )
   }
 }
 
-
+const opts = {timeoutSeconds: 300}
 // Listens for new runs inserted into /RubbishRunStory/:runID.
-exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{runID}')
+exports.proxy_POST_PICKUPS = functions.runWith(opts).firestore.document('/RubbishRunStory/{runID}')
   .onCreate(async (snap, _) => {
     const rubbishRunStory = snap.data();
     const firebaseID = rubbishRunStory.rubbishRunStoryModelID;
@@ -47,11 +47,45 @@ exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{run
     }
 
     let payload = photoStories.map(photoStory => {
+      // The user database is schema-on-write. Do not assume that just because a run entry links
+      // to a pickup entry, that pickup entry actually exists. A case in prod where this
+      // constraint is violated: RubbishRunStory '04yS2lIMG2ehUJrH7OO2' links to non-existant
+      // Story 'KkTPjp7GIAW8uz6qWsvT'.
+      if (!photoStory.exists) {
+        return null;  // sentinal value for filter(v => v)
+      }
       const photoStoryData = photoStory.data();
+
+      // The user database is schema-on-write. Do not assume any fields exist, but if they do
+      // exist, assume that they are valid. If fields do not exist that are expected to exist,
+      // log a warning and silently drop the pickup.
+      const requiredFields = ['photoStoryID', 'rubbishType', 'userTimeStamp', 'long', 'lat'];
+      const fieldExistsConstraintViolated = (
+        requiredFields
+        .map(field => !(field in photoStoryData))
+        .some(v => v)
+      )
+      if (fieldExistsConstraintViolated) {
+        const missingFields = (
+          requiredFields
+          .map(field => (field in photoStoryData) ? null : field)
+          .filter(v => v)
+        )
+        functions.logger.info(
+          `The pickup with ID ${photoStoryData.photoStoryID} associated with the run with ID ` +
+          `${firebaseID} is missing required fields [${missingFields}]. This pickup will not be ` +
+          `included in the pickups written to the database.`
+        )
+        return null;  // sentinal value for filter(v => v)
+      }
+
+      // The curb is allowed to be empty. Runs that predate this service lack one. The analytics
+      // service will attempt to use the distribution of the data to guess its value.
+      const curb = ("curb" in photoStoryData) ? photoStoryData.curb : null;
+
       firebaseRunID = photoStoryData.photoStoryID;
       const type = photoStoryData.rubbishType;
       const timestamp = photoStoryData.userTimeStamp;
-      const curb = ("curb" in photoStoryData) ? photoStoryData.curb : null;
       const geometry = `POINT(${photoStoryData.long} ${photoStoryData.lat})`
       return {
         firebase_run_id: firebaseRunID,
@@ -62,11 +96,11 @@ exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{run
         geometry: geometry
       };
     });
+    payload = payload.filter(v => v);
     payload = {[firebaseID]: payload}
 
-    const log_ids = payload[firebaseID].map(e => e.firebase_run_id);
     functions.logger.info(
-      `Processing proxy_POST_pickups({${firebaseID}: [...${log_ids}]}).`
+      `Processing proxy_POST_pickups(${firebaseID}).`
     );
 
     return axios.post(
@@ -79,7 +113,7 @@ exports.proxy_POST_PICKUPS = functions.firestore.document('/RubbishRunStory/{run
     }).catch((err) => {
       functions.logger.error(
         `The proxy_POST_pickups database listener failed to POST to the ` +
-        `POST_pickups functional API endpoint. Failed with ${err.name}: ${err.message}`
+        `POST_pickups functional API endpoint. Failed with ${err.name}: ${err.message}.`
       );
       throw err;
     });
