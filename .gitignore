@@ -10,4 +10,5 @@ fixtures/
 notebooks/
 *.ipynb
 cloud_sql_proxy
-serviceAccountKey.json
+devServiceAccountKey.json
+prodServiceAccountKey.json

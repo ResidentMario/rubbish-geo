@@ -24,7 +24,7 @@ done
 
 pushd ../ 1>&0 && export RUBBISH_BASE_DIR=$(echo $PWD) && popd 1>&0
 export RUBBISH_POSTGIS_CONNSTR="postgresql://rubbish-test-user:polkstreet@localhost:5432/rubbish"
-export GOOGLE_APPLICATION_CREDENTIALS=$RUBBISH_BASE_DIR/js/serviceAccountKey.json
+export GOOGLE_APPLICATION_CREDENTIALS=$RUBBISH_BASE_DIR/auth/devServiceAccountKey.json
 export RUBBISH_GEO_ENV="local"
 
 echo "Starting functional API POST_pickups emulator..."
