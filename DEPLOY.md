@@ -16,7 +16,7 @@ Note that it is currently only possible to deploy on macOS.
 ### Instructions
 
 1. Navigate to the `/js` folder and run `firebase init`. Target the project you will deploy into. When Firebase asks what features to install, select the Firestore, Functions, and Emulator options. Do not overwrite any files that already exist (Firebase will always ask for confirmation before doing so).
-2. Navigate to [Project Settings](https://console.firebase.google.com/u/_/project/_/settings/serviceaccounts/adminsdk) in the Firebase web console and find the Firebase service account email (will be something like `firebase-adminsdk-$RANDOM@$PROJECT_ID.iam.gserviceaccount.com`). Click on "Generate new private key" (use default settings). Download the key file and place it at `js/serviceAccountKey.json`.
+2. Navigate to [Project Settings](https://console.firebase.google.com/u/_/project/_/settings/serviceaccounts/adminsdk) in the Firebase web console and find the Firebase service account email (will be something like `firebase-adminsdk-$RANDOM@$PROJECT_ID.iam.gserviceaccount.com`). Click on "Generate new private key" (use default settings). Download the key file and place it at `js/DevserviceAccountKey.json` or `js/ProdServiceAccountKey.json`, depending on what environment you are deploying to.
 
    Firebase will uses this private key to deploy.
 3. If you do not have `jq` ([a CLI string parsing tool](https://stedolan.github.io/jq/)), install it: `brew install jq`.

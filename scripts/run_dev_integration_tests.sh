@@ -42,7 +42,7 @@ RUBBISH_POSTGIS_CONNSTR=postgresql://read_write:$RUBBISH_GEO_READ_WRITE_USER_PAS
 
 echo "Setting environment variables..."
 pushd ../ 1>&0 && RUBBISH_BASE_DIR=$(echo $PWD) && popd 1>&0
-export GOOGLE_APPLICATION_CREDENTIALS=$RUBBISH_BASE_DIR/js/serviceAccountKey.json
+export GOOGLE_APPLICATION_CREDENTIALS=$RUBBISH_BASE_DIR/auth/devServiceAccountKey.json
 export RUBBISH_GEO_ENV=dev
 GCP_PROJECT=$(gcloud config get-value project)
 REGION=us-central1  # currently a hardcoded value

@@ -5,8 +5,7 @@ set -e
 # Check that jq is installed; we use this tool to parse gcloud outputs.
 jq --help >/dev/null || (echo "jq is not installed, 'brew install jq' to get it." && exit 1)
 
-# Set this to the Rubbish environment, one of {dev, prod}. This value is used to ensure bucket
-# name uniqueness.
+# Set this to the Rubbish environment, one of {dev, prod}.
 if [[ -z "$RUBBISH_GEO_ENV" ]]; then
     echo "RUBBISH_GEO_ENV environment variable not set, exiting." && exit 1
 fi
