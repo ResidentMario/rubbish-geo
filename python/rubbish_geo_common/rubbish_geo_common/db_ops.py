@@ -59,7 +59,7 @@ def get_db(profile=None):
     connections to GCP databases.
     """
     if 'RUBBISH_POSTGIS_CONNSTR' in os.environ:
-        return os.environ['RUBBISH_POSTGIS_CONNSTR']
+        return os.environ['RUBBISH_POSTGIS_CONNSTR'], 'local', 'unset'
 
     if profile is None:
         profile = 'default'
