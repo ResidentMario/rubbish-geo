@@ -53,7 +53,12 @@ This script will launch (or restart) the database container the container automa
 
 ### migrations
 
-Database migrations using Alembic are located in the `migrations` subfolder. These are performed for you automatically when running tests.
+Database migrations using Alembic are located in the `migrations` subfolder. These are performed for you automatically when running tests. However, to test new/updated migrations or, you will need to rebuild the container first:
+
+```bash
+# PWD=rubbish-geo
+docker build . --file Dockerfile.database --tag rubbish-db:latest
+```
 
 ### ci
 

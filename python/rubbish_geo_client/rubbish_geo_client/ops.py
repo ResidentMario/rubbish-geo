@@ -133,7 +133,7 @@ def write_pickups(pickups, check_distance=True):
      "firebase_run_id": <str>,
      "type": <int, see key in docs>,
      "timestamp": <int; UTC UNIX timestamp>,
-     "curb": <{left, right, None}; user statement of side of the street>,
+     "curb": <{left, right, center, None}; user statement of side of the street>,
      "geometry": <str; POINT in WKT format>}
     ```
 
@@ -176,10 +176,10 @@ def write_pickups(pickups, check_distance=True):
                 f"timestamp is actually a UTC UNIX timestamp?"
             )
         curb = pickup["curb"]
-        if curb is not None and curb != "left" and curb != "right":
+        if curb not in [None, "left", "right", "center"]:
             raise ValueError(
                 f"Found pickup with invalid curb value {curb} "
-                f"(must be one of 'left', 'right')."
+                f"(must be one of 'left', 'right', 'center', None)."
             )
         try:
             pickup["type"] = RUBBISH_TYPE_MAP[pickup["type"]]
@@ -349,7 +349,7 @@ def write_pickups(pickups, check_distance=True):
                 type=pickup['type'],
                 timestamp=datetime.utcfromtimestamp(pickup['timestamp']),
                 linear_reference=linear_reference,
-                curb=0 if pickup['curb'] == 'left' else 1
+                curb=pickup['curb']
             )
             session.add(pickup_obj)
 
@@ -589,7 +589,8 @@ def sector_get(sector_name, include_na=False, offset=0):
         if statistic.centerline_id not in response_map:
             centerline_dict = centerline_obj_to_dict(statistic.centerline)
             response_map[statistic.centerline_id] = {
-                'centerline': centerline_dict, 'statistics': {0: None, 1: None}
+                'centerline': centerline_dict,
+                'statistics': {'left': None, 'center': None, 'right': None}
             }
         statistic_dict = blockface_statistic_obj_to_dict(statistic)
         response_map[statistic.centerline_id]['statistics'][statistic.curb] = statistic_dict
@@ -598,7 +599,7 @@ def sector_get(sector_name, include_na=False, offset=0):
             if centerline.id not in response_map:
                 response_map[centerline.id] = {
                     'centerline': centerline_obj_to_dict(centerline),
-                    'statistics': {0: None, 1: None}
+                    'statistics': {'left': None, 'center': None, 'right': None}
                 }
     return [response_map[centerline_id] for centerline_id in response_map]
 
@@ -654,10 +655,12 @@ def coord_get(coord, include_na=False):
 
     stats_dicts = blockface_statistic_objs_to_dicts(stats_objs)
     statistics = {stat_dict['curb']: stat_dict for stat_dict in stats_dicts}
-    if 0 not in statistics:
-        statistics[0] = None
-    if 1 not in statistics:
-        statistics[1] = None
+    if 'left' not in statistics:
+        statistics['left'] = None
+    if 'right' not in statistics:
+        statistics['right'] = None
+    if 'center' not in statistics:
+        statistics['center'] = None
     return {"centerline": centerline_obj_to_dict(centerline), "statistics": statistics}
 
 def run_get(run_id):
@@ -707,7 +710,8 @@ def run_get(run_id):
         if statistic.centerline_id not in response_map:
             centerline_dict = centerline_obj_to_dict(statistic.centerline)
             response_map[statistic.centerline_id] = {
-                'centerline': centerline_dict, 'statistics': {0: None, 1: None}
+                'centerline': centerline_dict,
+                'statistics': {'left': None, 'center': None, 'right': None}
             }
         statistic_dict = blockface_statistic_obj_to_dict(statistic)
         response_map[statistic.centerline_id]['statistics'][statistic.curb] = statistic_dict

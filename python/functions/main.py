@@ -84,7 +84,7 @@ def POST_pickups(request):
                 "firebase_id": <int>,
                 "type": <str; from {'tobacco', 'paper', 'plastic', 'other', 'food', 'glass'}>,
                 "timestamp": <int; UTC UNIX timestamp>,
-                "curb": <{'left', 'right', None}; user statement of side of the street>,
+                "curb": <{'left', 'right', 'center', None}; side of the street>,
                 "geometry": <str; POINT in WKT format>
             }
         ]
