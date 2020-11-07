@@ -28,6 +28,7 @@ if [[ INSTANCE_EXISTS -eq 0 ]]; then
         jq -r '.[] | .name' | grep rubbish-geo-postgis-db)
 else
     echo "Database instance does not exist yet, creating now (this will take some time)..."
+    INSTANCE_NAME="rubbish-geo-postgis-db-$RANDOM"
     gcloud sql instances create $INSTANCE_NAME \
         --database-version=POSTGRES_12 \
         --tier db-g1-small \
@@ -36,7 +37,6 @@ else
         --password=$RUBBISH_GEO_POSTGRES_USER_PASSWORD
     # NOTE(aleksey): instance names are reserved for a while even after deletion, thus the $RANDOM
     # to avoid collisions.
-    INSTANCE_NAME="rubbish-geo-postgis-db-$RANDOM"
 fi
 
 echo "Configuring connection to the database instance...🔌"

@@ -9,15 +9,25 @@ jq --help >/dev/null || (echo "jq is not installed, 'brew install jq' to get it.
 if [[ -z "$RUBBISH_GEO_ENV" ]]; then
     echo "RUBBISH_GEO_ENV environment variable not set, exiting." && exit 1
 fi
+# Set this to the Firebase project ID, e.g. rubbishproduction-411a1.
+if [[ -z "$FIREBASE_PROJECT" ]]; then
+    echo "FIREBASE_PROJECT environment variable not set, exiting." && exit 1
+fi
 
 echo "Checking functional API environment configuration...🏠"
 GCP_PROJECT=$(gcloud config get-value project)
-pushd ../js && FUNCTIONAL_API_ENV_CONFIG=$(firebase functions:config:get | jq '.functional_api') && popd
+pushd ../js && \
+    FUNCTIONAL_API_ENV_CONFIG=$(firebase --project $FIREBASE_PROJECT functions:config:get | \
+        jq '.functional_api') && \
+    popd
 if [[ "$FUNCTIONAL_API_ENV_CONFIG" == "null" ]]; then
     echo "Functional API configuration secrets not set, creating now..."
     REGION=us-central1  # currently a hardcoded value
     POST_PICKUPS_URL=https://$REGION-$GCP_PROJECT.cloudfunctions.net/POST_pickups
-    pushd ../js && firebase functions:config:set functional_api.post_pickups_url=$POST_PICKUPS_URL && popd
+    pushd ../js && \
+        firebase --project $FIREBASE_PROJECT functions:config:set \
+            functional_api.post_pickups_url=$POST_PICKUPS_URL \
+        && popd
 else
     echo "Functional API configuration secrets already set."
 fi
@@ -42,7 +52,7 @@ echo "Firebase service account already configured."
 echo "Deploy firebase functions...⚙️"
 pushd ../js && \
     GOOGLE_APPLICATION_CREDENTIALS=$SERVICE_ACCOUNT_KEY \
-        firebase deploy --only functions:proxy_POST_PICKUPS && \
+        firebase deploy --project $FIREBASE_PROJECT --only functions:proxy_POST_PICKUPS && \
     popd
 
 echo "All done! To see the functions deployed visit "
