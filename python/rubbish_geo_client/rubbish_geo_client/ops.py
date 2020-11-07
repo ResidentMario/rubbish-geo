@@ -55,7 +55,7 @@ def point_side_of_centerline(point_geom, centerline_geom):
     x_start, y_start, x_stop, y_stop = start_geom.x, start_geom.y, stop_geom.x, stop_geom.y
     p_x, p_y = point_geom.x, point_geom.y
     d = (p_x - x_start) * (y_stop - y_start) - (p_y - y_start) * (x_stop - x_start)
-    return 0 if d <= 0 else 1
+    return 'left' if d <= 0 else 'right'
 
 def nearest_centerline_to_point(point_geom, session, rank=0, check_distance=False):
     """
