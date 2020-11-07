@@ -517,7 +517,8 @@ def radial_get(coord, distance, include_na=False, offset=0):
         if statistic.centerline_id not in response_map:
             centerline_dict = centerline_obj_to_dict(statistic.centerline)
             response_map[statistic.centerline_id] = {
-                'centerline': centerline_dict, 'statistics': {0: None, 1: None}
+                'centerline': centerline_dict,
+                'statistics': {'left': None, 'center': None, 'right': None}
             }
         statistic_dict = blockface_statistic_obj_to_dict(statistic)
         response_map[statistic.centerline_id]['statistics'][statistic.curb] = statistic_dict
@@ -526,7 +527,7 @@ def radial_get(coord, distance, include_na=False, offset=0):
             if centerline.id not in response_map:
                 response_map[centerline.id] = {
                     'centerline': centerline_obj_to_dict(centerline),
-                    'statistics': {0: None, 1: None}
+                    'statistics': {'left': None, 'center': None, 'right': None}
                 }
     if len(response_map) == 0:
         return []
