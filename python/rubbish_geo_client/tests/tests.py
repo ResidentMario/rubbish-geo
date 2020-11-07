@@ -56,7 +56,7 @@ class TestWritePickups(unittest.TestCase):
         assert len(pickups) == 2
         assert pickups[0].centerline_id == pickups[1].centerline_id
         assert len(blockface_statistics) == 1
-        assert blockface_statistics[0].curb == 0
+        assert blockface_statistics[0].curb == 'left'
         assert blockface_statistics[0].num_runs == 1
 
     @clean_db
@@ -73,7 +73,7 @@ class TestWritePickups(unittest.TestCase):
         assert len(pickups) == 2
         assert pickups[0].centerline_id == pickups[1].centerline_id
         assert len(blockface_statistics) == 1
-        assert blockface_statistics[0].curb == 0
+        assert blockface_statistics[0].curb == 'left'
         assert blockface_statistics[0].num_runs == 1
 
     @clean_db
@@ -93,7 +93,7 @@ class TestWritePickups(unittest.TestCase):
         assert len(pickups) == 4
         assert len({p.centerline_id for p in pickups}) == 1
         assert len(blockface_statistics) == 2
-        assert {b.curb for b in blockface_statistics} == {0, 1}
+        assert {b.curb for b in blockface_statistics} == {'left', 'right'}
         assert blockface_statistics[0].num_runs == 1
         assert blockface_statistics[1].num_runs == 1
 
@@ -180,7 +180,7 @@ class TestWritePickups(unittest.TestCase):
         write_pickups(input, check_distance=True)
         blockface_statistics = self.session.query(BlockfaceStatistic).all()
         assert len(blockface_statistics) == 1
-        assert blockface_statistics[0].curb == 0
+        assert blockface_statistics[0].curb == 'left'
 
     @clean_db
     @alias_test_db
@@ -192,7 +192,7 @@ class TestWritePickups(unittest.TestCase):
         write_pickups(input, check_distance=True)
         blockface_statistics = self.session.query(BlockfaceStatistic).all()
         assert len(blockface_statistics) == 1
-        assert blockface_statistics[0].curb == 1
+        assert blockface_statistics[0].curb == 'right'
 
     # Crafting a simple test case that triggers this logic is proving troublesome!
     # @clean_db
@@ -295,7 +295,10 @@ class TestRunGet(unittest.TestCase):
         write_pickups(input)
         result = run_get('foo')
         assert len(result) == 1
-        assert result[0]['statistics'][0] is not None and result[0]['statistics'][1] is None
+        assert (
+            result[0]['statistics']['left'] is not None and
+            result[0]['statistics']['right'] is None
+        )
 
         # case 2: left and right runs inserted separately
         input = valid_pickups_from_geoms(
@@ -304,11 +307,17 @@ class TestRunGet(unittest.TestCase):
         write_pickups(input)
         result = run_get('foo')
         assert len(result) == 1
-        assert result[0]['statistics'][0] is not None and result[0]['statistics'][1] is None
+        assert (
+            result[0]['statistics']['left'] is not None and
+            result[0]['statistics']['right'] is None
+        )
 
         result = run_get('bar')
         assert len(result) == 1
-        assert result[0]['statistics'][0] is None and result[0]['statistics'][1] is not None
+        assert (
+            result[0]['statistics']['left'] is None and
+            result[0]['statistics']['right'] is not None
+        )
 
 class TestCoordGet(unittest.TestCase):
     def setUp(self):
@@ -323,7 +332,7 @@ class TestCoordGet(unittest.TestCase):
         result = coord_get((0.1, 0.0001), include_na=True)
         assert set(result.keys()) == {'centerline', 'statistics'}
         assert result['centerline'] is not None
-        assert result['statistics'][0] is None and result['statistics'][1] is None
+        assert result['statistics']['left'] is None and result['statistics']['right'] is None
 
         # case 2: no right statistics so stats only has left stats
         input = valid_pickups_from_geoms(
@@ -331,7 +340,7 @@ class TestCoordGet(unittest.TestCase):
         )
         write_pickups(input)
         result = coord_get((0.1, 0.0001), include_na=True)
-        assert result['statistics'][0] is not None and result['statistics'][1] is None
+        assert result['statistics']['left'] is not None and result['statistics']['right'] is None
 
         # case 3: both sides have stats, so both sides return
         input = valid_pickups_from_geoms(
@@ -339,7 +348,7 @@ class TestCoordGet(unittest.TestCase):
         )
         write_pickups(input)
         result = coord_get((0.1, -0.0001), include_na=True)
-        assert result['statistics'][0] is not None and result['statistics'][1] is not None
+        assert result['statistics']['left'] is not None and result['statistics']['right'] is not None
 
     @clean_db
     @alias_test_db
@@ -358,7 +367,7 @@ class TestCoordGet(unittest.TestCase):
         )
         write_pickups(input)
         result = coord_get((0.1, 0.0001), include_na=False)
-        assert result['statistics'][0] is not None and result['statistics'][1] is None
+        assert result['statistics']['left'] is not None and result['statistics']['right'] is None
 
         # case 3: both sides have stats, so both sides return
         input = valid_pickups_from_geoms(
@@ -366,14 +375,14 @@ class TestCoordGet(unittest.TestCase):
         )
         write_pickups(input)
         result = coord_get((0.1, -0.0001), include_na=False)
-        assert result['statistics'][0] is not None and result['statistics'][1] is not None
+        assert result['statistics']['left'] is not None and result['statistics']['right'] is not None
 
         # case 4: point is closest to some other centerline, but we iter through to match
         with warnings.catch_warnings():
             # ignore the long-match-distance warnings
             warnings.simplefilter('ignore')
             result = coord_get((1, 1), include_na=False)
-        assert result['statistics'][0] is not None and result['statistics'][1] is not None
+        assert result['statistics']['left'] is not None and result['statistics']['right'] is not None
 
 class TestSectorGet(unittest.TestCase):
     def setUp(self):
@@ -408,7 +417,10 @@ class TestSectorGet(unittest.TestCase):
 
         result = sector_get('Polygon Land', include_na=False)
         assert len(result) == 1
-        assert result[0]['statistics'][0] is not None and result[0]['statistics'][1] is None
+        assert (
+            result[0]['statistics']['left'] is not None and
+            result[0]['statistics']['right'] is None
+        )
 
 class TestRadialGet(unittest.TestCase):
     def setUp(self):
