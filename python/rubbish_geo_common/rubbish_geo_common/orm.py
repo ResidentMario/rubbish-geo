@@ -3,6 +3,7 @@ from sqlalchemy.dialects.postgresql import ENUM
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from geoalchemy2 import Geometry
+from rubbish_geo_common.consts import RUBBISH_TYPES
 
 Base = declarative_base()
 
@@ -72,11 +73,11 @@ class Pickup(Base):
     firebase_run_id = sa.Column("firebase_run_id", sa.String, nullable=False)
     centerline_id =\
         sa.Column("centerline_id", sa.Integer, sa.ForeignKey("centerlines.id"), nullable=False)
-    type = sa.Column("type", sa.Integer, nullable=False)
+    type = sa.Column("type", ENUM(*RUBBISH_TYPES, name="rubbish_type"), nullable=False)
     timestamp = sa.Column("timestamp", sa.DateTime, nullable=False)
     geometry = sa.Column("geometry", Geometry("POINT"), nullable=False)
     snapped_geometry = sa.Column("snapped_geometry", Geometry("POINT"), nullable=False)
-    linear_reference = sa.Column("linear_reference", sa.Float(precision=3))
+    linear_reference = sa.Column("linear_reference", sa.Float(precision=3), nullable=False)
     curb = sa.Column("curb", ENUM('left', 'right', 'center', name='curb'), nullable=False)
     centerline = relationship("Centerline", back_populates="pickups")
 

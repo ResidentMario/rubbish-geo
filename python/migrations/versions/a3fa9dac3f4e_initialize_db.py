@@ -12,6 +12,13 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import ENUM
 from geoalchemy2 import Geometry
 
+# NOTE(aleksey): trying to import this from consts causes build failures in Dockerfile.database
+# b/c rubbish-geo-common triggers pip to try to compile psycopg2 from source, and fail, even 
+# though psycopg2-binary is already installed. As a workaround, just embed the type list directly
+# here.
+# from rubbish_geo_common.consts import RUBBISH_TYPES
+RUBBISH_TYPES = ['tobacco', 'paper', 'plastic', 'other', 'food', 'glass']
+
 # revision identifiers, used by Alembic.
 revision = "a3fa9dac3f4e"
 down_revision = None
@@ -67,11 +74,11 @@ def upgrade():
         sa.Column("firebase_id", sa.String, nullable=False),  # foreign key to app DB pickup
         sa.Column("firebase_run_id", sa.String, nullable=False),  # foreign key to app DB run
         sa.Column("centerline_id", sa.Integer, sa.ForeignKey("centerlines.id"), nullable=False),
-        sa.Column("type", sa.Integer, nullable=False),
+        sa.Column("type", ENUM(*RUBBISH_TYPES, name="rubbish_type"), nullable=False),
         sa.Column("timestamp", sa.DateTime, nullable=False),
         sa.Column("geometry", Geometry("POINT", srid=4326), nullable=False),
         sa.Column("snapped_geometry", Geometry("POINT", srid=4326), nullable=False),
-        sa.Column("linear_reference", sa.Float(precision=3)),
+        sa.Column("linear_reference", sa.Float(precision=3), nullable=False),
         sa.Column("curb", ENUM('left', 'right', 'center', name='curb'), nullable=False)
     )
     # Blockfaces are a psuedo-virtual table defined by the combination of {centerline,curb}.

@@ -14,7 +14,7 @@ from scipy.stats import shapiro
 
 from rubbish_geo_common.db_ops import db_sessionmaker
 from rubbish_geo_common.orm import Pickup, Centerline, BlockfaceStatistic, Sector
-from rubbish_geo_common.consts import RUBBISH_TYPES, RUBBISH_TYPE_MAP
+from rubbish_geo_common.consts import RUBBISH_TYPES
 
 def point_side_of_centerline(point_geom, centerline_geom):
     """
@@ -131,7 +131,7 @@ def write_pickups(pickups, check_distance=True):
     ```
     {"firebase_id": <str>,
      "firebase_run_id": <str>,
-     "type": <int, see key in docs>,
+     "type": <str, from RUBBISH_TYPES>,
      "timestamp": <int; UTC UNIX timestamp>,
      "curb": <{left, right, center, None}; user statement of side of the street>,
      "geometry": <str; POINT in WKT format>}
@@ -181,10 +181,10 @@ def write_pickups(pickups, check_distance=True):
                 f"Found pickup with invalid curb value {curb} "
                 f"(must be one of 'left', 'right', 'center', None)."
             )
-        try:
-            pickup["type"] = RUBBISH_TYPE_MAP[pickup["type"]]
-        except KeyError:
-            raise ValueError(f"Found pickup with type not in valid types {RUBBISH_TYPES!r}.")
+        if pickup["type"] not in RUBBISH_TYPES:
+            raise ValueError(
+                f"Found pickup with type {pickup['type']!r} not in valid types {RUBBISH_TYPES!r}."
+            )
 
     session = db_sessionmaker()()
 
