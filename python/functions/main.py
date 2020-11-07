@@ -173,7 +173,6 @@ def GET_radial(request):
         })
         abort(400)
 
-    print("RESPONSE ", response)
     return {"status": 200, "blockfaces": response}
 
 def GET_sector(request):
