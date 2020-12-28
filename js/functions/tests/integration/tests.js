@@ -51,8 +51,4 @@ async function insertExampleRun() {
 
 (async () => {
   await insertExampleRun();
-  console.log(
-    `Though this test succeeded the function may still fail in the POST part. Be sure to ` +
-    `also check the error logs.`
-  )
 })();
