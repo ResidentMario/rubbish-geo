@@ -170,7 +170,7 @@ class Test_GET_radial(unittest.TestCase):
     @insert_grid
     def testGetSingle(self):
         pickups = valid_pickups_from_geoms([Point(0.1, 0), Point(0.9, 0)], curb='left')
-        write_pickups(pickups)
+        write_pickups(pickups, 'local')
 
         response = requests.get(
             f"{F_URL}?request_type=radial&x=0&y=0&distance=1&include_na=False&offset=0",
@@ -186,9 +186,9 @@ class Test_GET_radial(unittest.TestCase):
     @insert_grid
     def testGetDouble(self):
         pickups = valid_pickups_from_geoms([Point(0.1, 0), Point(0.9, 0)], curb='left')
-        write_pickups(pickups)
+        write_pickups(pickups, 'local')
         pickups = valid_pickups_from_geoms([Point(0, 0.1), Point(0, 0.9)], curb='left')
-        write_pickups(pickups)
+        write_pickups(pickups, 'local')
 
         response = requests.get(
             f"{F_URL}?request_type=radial&x=0&y=0&distance=1&include_na=False&offset=0",
@@ -209,10 +209,10 @@ class Test_GET_sector(unittest.TestCase):
             poly = Polygon([[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]])
             filepath = tmpdir.rstrip("/") + "/" + "sector-polygon.geojson"
             gpd.GeoDataFrame(geometry=[poly]).to_file(filepath, driver="GeoJSON")
-            insert_sector("Polygon Land", filepath)
+            insert_sector("Polygon Land", filepath, 'local')
 
         pickups = valid_pickups_from_geoms([Point(0.1, 0), Point(0.9, 0)], curb='left')
-        write_pickups(pickups)
+        write_pickups(pickups, 'local')
 
         response = requests.get(
             f"{F_URL}?request_type=sector&sector_name=Polygon%20Land&include_na=False&offset=0",
@@ -233,7 +233,7 @@ class Test_GET_coord(unittest.TestCase):
     @insert_grid
     def testGetSingleCoord(self):
         pickups = valid_pickups_from_geoms([Point(0.1, 0), Point(0.9, 0)], curb='left')
-        write_pickups(pickups)
+        write_pickups(pickups, 'local')
 
         response = requests.get(
             f"{F_URL}?request_type=coord&x=0&y=0&include_na=False&offset=0",
@@ -252,7 +252,7 @@ class Test_GET_run(unittest.TestCase):
         pickups = valid_pickups_from_geoms(
             [Point(0.1, 0), Point(0.9, 0)], firebase_run_id='foo', curb='left'
         )
-        write_pickups(pickups)
+        write_pickups(pickups, 'local')
 
         response = requests.get(f"{F_URL}?request_type=run&run_id=foo", headers=headers)
         response.raise_for_status()

@@ -92,7 +92,7 @@ def POST_pickups(request):
     ```
     """
     try:
-        get_db()
+        get_db(RUBBISH_GEO_ENV)
     except:
         logger.log_struct({
             "level": "error",
@@ -123,7 +123,7 @@ def POST_pickups(request):
                 })
                 pickup['type'] = 'other'
         try:
-            write_pickups(run)
+            write_pickups(run, RUBBISH_GEO_ENV)
         except:
             logger.log_struct({
                 "level": "error",
@@ -165,7 +165,9 @@ def GET_radial(request):
     })
 
     try:
-        response = radial_get((x, y), distance, include_na=include_na, offset=offset)
+        response = radial_get(
+            (x, y), distance, RUBBISH_GEO_ENV, include_na=include_na, offset=offset
+        )
     except:
         logger.log_struct({
             "level": "error",
@@ -201,7 +203,7 @@ def GET_sector(request):
     })
 
     try:
-        response = sector_get(sector_name, include_na=include_na, offset=offset)
+        response = sector_get(sector_name, RUBBISH_GEO_ENV, include_na=include_na, offset=offset)
     except:
         logger.log_struct({
             "level": "error",
@@ -233,7 +235,7 @@ def GET_coord(request):
     include_na = args['include_na'].title() == 'True' if 'include_na' in args else False
 
     try:
-        response = coord_get((x, y), include_na=include_na)
+        response = coord_get((x, y), RUBBISH_GEO_ENV, include_na=include_na)
     except:
         logger.log_struct({
             "level": "error",
@@ -268,7 +270,7 @@ def GET_run(request):
         "message": f"Processing GET_run(run_id={run_id})."
     })
     try:
-        response = run_get(run_id)        
+        response = run_get(run_id, RUBBISH_GEO_ENV)        
     except:
         logger.log_struct({
             "level": "error",
