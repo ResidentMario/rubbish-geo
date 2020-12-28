@@ -15,14 +15,12 @@ from rubbish_geo_common.orm import (
 
 APPDIR = pathlib.Path(click.get_app_dir("rubbish", force_posix=True))
 
-def set_db(dbstr, conntype, conname=None, profile=None):
+def set_db(profile, connstr, conntype, conname=None):
     """
     Sets the target database connection settings (writing the input value to disk).
     """
     if conntype not in ["local", "gcp"]:
         raise ValueError("conntype must be set to one of [local, gcp].")
-    if profile is None:
-        profile = 'default'
     if conname is None:
         if conntype == 'gcp':
             raise ValueError(
@@ -30,8 +28,7 @@ def set_db(dbstr, conntype, conname=None, profile=None):
                 "is required by the GCP cloud_sql_proxy. For more information refer to "
                 "https://cloud.google.com/sql/docs/postgres/sql-proxy."
             )
-        else:
-            conntype = 'unset'
+        conname = 'unset'
 
     if not APPDIR.exists():
         os.makedirs(APPDIR)
@@ -40,7 +37,7 @@ def set_db(dbstr, conntype, conname=None, profile=None):
     cfg = configparser.ConfigParser()
     if cfg_fp.exists():
         cfg.read(cfg_fp)
-    cfg[profile] = {'connstr': dbstr, 'type': conntype, 'conname': conname}
+    cfg[profile] = {'connstr': connstr, 'conntype': conntype, 'conname': conname}
     with open(cfg_fp, "w") as f:
         cfg.write(f)
 
@@ -52,7 +49,7 @@ def get_db_cfg():
     cfg.read(cfg_fp)
     return cfg
 
-def get_db(profile=None):
+def get_db(profile):
     """
     Gets the database connection string (what gets passed to psql or sqlalchemy at runtime), type
     (local or gcp), and connection name (used by the cloud_sql_proxy and required for local
@@ -61,30 +58,37 @@ def get_db(profile=None):
     if 'RUBBISH_POSTGIS_CONNSTR' in os.environ:
         return os.environ['RUBBISH_POSTGIS_CONNSTR'], 'local', 'unset'
 
-    if profile is None:
-        profile = 'default'
-
     cfg = get_db_cfg()
-    return cfg[profile]['connstr'], cfg[profile]['type'], cfg[profile]['conname']
+    if cfg is None:
+        raise ValueError("The Rubbish configuration file is empty or does not exist.")
+    if profile not in cfg:
+        raise ValueError(f"Rubbish configuration file does not have a profile named {profile!r}.")
+    
+    cfg_profile = cfg[profile]
+    if 'connstr' not in cfg_profile:
+        raise ValueError(f"Rubbish connection profile {profile!r} is missing a connstr field.")
+    if 'conntype' not in cfg_profile:
+        raise ValueError(f"Rubbish connection profile {profile!r} is missing a conntype field.")
+    if 'conname' not in cfg_profile:
+        raise ValueError(f"Rubbish connection profile {profile!r} is missing a conname field.")
 
-def db_sessionmaker(profile=None):
+    return cfg_profile['connstr'], cfg_profile['conntype'], cfg_profile['conname']
+
+def db_sessionmaker(profile):
     """
     Returns a sessionmaker object for creating DB sessions.
     """
-    if profile is None:
-        profile = 'default'
-    
-    connstr, _, _ = get_db(profile=profile)
+    connstr, _, _ = get_db(profile)
     if connstr == None:
         raise ValueError("connection string not set, run set_db first")
     engine = sa.create_engine(connstr)
     return sessionmaker(bind=engine)
 
-def reset_db(profile=None):
+def reset_db(profile):
     """
     Resets the current database, deleting all data.
     """
-    session = db_sessionmaker(profile=profile)()
+    session = db_sessionmaker(profile)()
 
     engine = session.bind
     engine.execute('ALTER SEQUENCE zones_id_seq RESTART WITH 1;')

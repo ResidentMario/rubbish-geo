@@ -124,7 +124,7 @@ def nearest_centerline_to_point(point_geom, session, rank=0, check_distance=Fals
             )
     return match
 
-def write_pickups(pickups, check_distance=True):
+def write_pickups(pickups, profile, check_distance=True):
     """
     Writes pickups to the database. Pickups is expected to be a list of entries in the format:
 
@@ -186,7 +186,7 @@ def write_pickups(pickups, check_distance=True):
                 f"Found pickup with type {pickup['type']!r} not in valid types {RUBBISH_TYPES!r}."
             )
 
-    session = db_sessionmaker()()
+    session = db_sessionmaker(profile)()
 
     # Snap points to centerlines.
     # 
@@ -466,7 +466,7 @@ def centerline_obj_to_dict(centerline):
         "centerline_name": centerline.name,
     }
 
-def radial_get(coord, distance, include_na=False, offset=0):
+def radial_get(coord, distance, profile, include_na=False, offset=0):
     """
     Returns all blockface statistics for blockfaces containing at least one point at most
     ``distance`` away from ``coord``.
@@ -477,6 +477,8 @@ def radial_get(coord, distance, include_na=False, offset=0):
         Centerpoint for the scan.
     distance : int
         Distance (in meters) from centerpoint to scan for.
+    profile: str
+        The database to connect to (e.g. "dev") as configured in ~/.rubbish/config.
     include_na : bool, optional
         Whether or not to include blockfaces for which blockface statistics do not yet exist.
         Defaults to ``False``.
@@ -499,7 +501,7 @@ def radial_get(coord, distance, include_na=False, offset=0):
     ``dict``
         Query result.
     """
-    session = db_sessionmaker()()
+    session = db_sessionmaker(profile)()
     coord = f'SRID=4326;POINT({coord[0]} {coord[1]})'
     centerlines = (session
         .query(Centerline)
@@ -533,7 +535,7 @@ def radial_get(coord, distance, include_na=False, offset=0):
         return []
     return [response_map[centerline_id] for centerline_id in response_map]
 
-def sector_get(sector_name, include_na=False, offset=0):
+def sector_get(sector_name, profile, include_na=False, offset=0):
     """
     Returns all blockface statistics for blockfaces contained in a sector. Only blockfaces located
     completely within the sector count. Blockfaces touching sector edges are ok, blockfaces
@@ -543,6 +545,8 @@ def sector_get(sector_name, include_na=False, offset=0):
     ----------
     sector_name: str
         Unique sector name.
+    profile: str
+        The database to connect to (e.g. "dev") as configured in ~/.rubbish/config.
     include_na : bool, optional
         Whether or not to include blockfaces for which blockface statistics do not yet exist.
         Defaults to ``False``.
@@ -565,7 +569,7 @@ def sector_get(sector_name, include_na=False, offset=0):
     ``dict``
         Query result.
     """
-    session = db_sessionmaker()()
+    session = db_sessionmaker(profile)()
     sector = (session
         .query(Sector)
         .filter(Sector.name == sector_name)
@@ -604,7 +608,7 @@ def sector_get(sector_name, include_na=False, offset=0):
                 }
     return [response_map[centerline_id] for centerline_id in response_map]
 
-def coord_get(coord, include_na=False):
+def coord_get(coord, profile, include_na=False):
     """
     Returns blockface statistics for the centerline closest to the given coordinate.
 
@@ -612,6 +616,8 @@ def coord_get(coord, include_na=False):
     ----------
     coord: (x, y) coordinate tuple
         Origin point for the snapped selection.
+    profile: str
+        The database to connect to (e.g. "dev") as configured in ~/.rubbish/config.
     include_na : bool, optional
         Whether or not to include blockfaces for which blockface statistics do not exist yet.
         Defaults to ``False``.
@@ -630,7 +636,7 @@ def coord_get(coord, include_na=False):
     ``dict``
         Query result.    
     """
-    session = db_sessionmaker()()
+    session = db_sessionmaker(profile)()
     coord = shapely.geometry.Point(*coord)
 
     def get_stats_objs(session, centerline_id):
@@ -664,7 +670,7 @@ def coord_get(coord, include_na=False):
         statistics['center'] = None
     return {"centerline": centerline_obj_to_dict(centerline), "statistics": statistics}
 
-def run_get(run_id):
+def run_get(run_id, profile):
     """
     Returns blockface statistics and run-specific data for a specific run by id.
 
@@ -672,13 +678,15 @@ def run_get(run_id):
     ----------
     run_id : str
         The run id. Note: this is stored as ``firebase_id`` in the ``Pickups`` table.
+    profile: str
+        The database to connect to (e.g. "dev") as configured in ~/.rubbish/config.
 
     Returns
     -------
     ``dict``
         Query result.
     """
-    session = db_sessionmaker()()
+    session = db_sessionmaker(profile)()
     # Runs are not a native object in the analytics database. Instead, pickups are stored
     # with firebase_run_id and centerline_id columns set. We use this to get the
     # (centerline, curb) combinations this run touched. We then find all blockface statistics

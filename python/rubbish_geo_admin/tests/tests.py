@@ -18,13 +18,13 @@ from rubbish_geo_admin import update_zone, insert_sector, delete_sector, show_zo
 class TestUpdateZone(unittest.TestCase):
     def setUp(self):
         with patch('rubbish_geo_common.db_ops.get_db', new=get_db):
-            self.session = db_sessionmaker()()
+            self.session = db_sessionmaker('local')()
 
     @clean_db
     @alias_test_db
     def testNewZoneWrite(self):
         grid = get_grid()
-        update_zone("Grid City, California", "Foo, Bar", centerlines=grid)
+        update_zone("Grid City, California", "Foo, Bar", 'local', centerlines=grid)
         
         zones = self.session.query(Zone).all()
         assert len(zones) == 1
@@ -48,8 +48,8 @@ class TestUpdateZone(unittest.TestCase):
     @alias_test_db
     def testExistingZoneIdempotentWrite(self):
         grid = get_grid()
-        update_zone("Grid City, California", "Foo, Bar", centerlines=grid)
-        update_zone("Grid City, California", "Foo, Bar", centerlines=grid)
+        update_zone("Grid City, California", "Foo, Bar", 'local', centerlines=grid)
+        update_zone("Grid City, California", "Foo, Bar", 'local', centerlines=grid)
 
         zones = self.session.query(Zone).all()
         assert len(zones) == 1
@@ -63,13 +63,13 @@ class TestUpdateZone(unittest.TestCase):
     @alias_test_db
     @insert_grid
     def testShowZones(self):
-        show_zones()
+        show_zones('local')
 
 
 class testSectorOps(unittest.TestCase):
     def setUp(self):
         with patch('rubbish_geo_common.db_ops.get_db', new=get_db):
-            self.session = db_sessionmaker()()
+            self.session = db_sessionmaker('local')()
 
     @clean_db
     @alias_test_db
@@ -80,17 +80,17 @@ class testSectorOps(unittest.TestCase):
             filepath = tmpdir.rstrip("/") + "/" + "sector-polygon.geojson"
             gpd.GeoDataFrame(geometry=[poly]).to_file(filepath, driver="GeoJSON")
 
-            insert_sector("Polygon Land", filepath)
+            insert_sector("Polygon Land", filepath, 'local')
             assert self.session.query(Sector).count() == 1
 
             with pytest.raises(ValueError):
-                insert_sector("Polygon Land", filepath)
+                insert_sector("Polygon Land", filepath, 'local')
             
-            delete_sector("Polygon Land")
+            delete_sector("Polygon Land", 'local')
             assert self.session.query(Sector).count() == 0
 
             with pytest.raises(ValueError):
-                delete_sector("Polygon Land")
+                delete_sector("Polygon Land", 'local')
 
             # multipolygon case (valid)
             mpoly = MultiPolygon(
@@ -101,9 +101,9 @@ class testSectorOps(unittest.TestCase):
             )
             filepath = tmpdir.rstrip("/") + "/" + "sector-multipolygon.geojson"
             gpd.GeoDataFrame(geometry=[mpoly]).to_file(filepath, driver="GeoJSON")
-            insert_sector("MultiPolygon Land", filepath)
+            insert_sector("MultiPolygon Land", filepath, 'local')
             assert self.session.query(Sector).count() == 1
-            delete_sector("MultiPolygon Land")
+            delete_sector("MultiPolygon Land", 'local')
             assert self.session.query(Sector).count() == 0
 
             # linestring case (invalid)
@@ -111,7 +111,7 @@ class testSectorOps(unittest.TestCase):
             gpd.GeoDataFrame(geometry=[ls]).to_file(filepath, driver="GeoJSON")
             filepath = tmpdir.rstrip("/") + "/" + "sector-linestring.geojson"
             with pytest.raises(ValueError):
-                insert_sector("LineString Land", filepath)
+                insert_sector("LineString Land", filepath, 'local')
 
     @clean_db
     @alias_test_db
@@ -120,6 +120,6 @@ class testSectorOps(unittest.TestCase):
             poly = Polygon([[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]])
             filepath = tmpdir.rstrip("/") + "/" + "sector-polygon.geojson"
             gpd.GeoDataFrame(geometry=[poly]).to_file(filepath, driver="GeoJSON")
-            insert_sector("Polygon Land", filepath)
+            insert_sector("Polygon Land", filepath, 'local')
 
-            show_sectors()
+            show_sectors('local')

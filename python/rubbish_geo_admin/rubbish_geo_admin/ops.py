@@ -117,7 +117,7 @@ def _poly_wkb_to_bounds_str(wkb):
     bounds = str(tuple(f'{v:.4f}' for v in bounds)).replace("'", "")
     return bounds
 
-def run_cloud_sql_proxy(profile=None, force_download=False):
+def run_cloud_sql_proxy(profile, force_download=False):
     """
     Internal method. Does the song and dance Google requires to shell psql through to a DB.
     """
@@ -158,10 +158,10 @@ def run_cloud_sql_proxy(profile=None, force_download=False):
             "already in use. You will have to free the port first."
         )
 
-    _, _, conname = get_db(profile=profile)
+    _, _, conname = get_db(profile)
     return subprocess.Popen([f"{outpath.as_posix()}", f"-instances={conname}=tcp:5432"])
 
-def update_zone(osmnx_name, name, centerlines=None, profile=None):
+def update_zone(osmnx_name, name, profile, centerlines=None):
     """
     Updates a zone, plopping the new centerlines into the database.
 
@@ -169,7 +169,7 @@ def update_zone(osmnx_name, name, centerlines=None, profile=None):
     
     The optional `centerlines` argument is used to avoid a network request in testing.
     """
-    session = db_sessionmaker(profile=profile)()
+    session = db_sessionmaker(profile)()
 
     # insert zone
     # NOTE: flush writes DB ops to the database's transactional buffer without actually
@@ -247,7 +247,7 @@ def update_zone(osmnx_name, name, centerlines=None, profile=None):
     bbox = f'SRID=4326;{str(poly)}'
     zone.bounding_box = bbox
 
-    connstr, _, _ = get_db()
+    connstr, _, _ = get_db(profile)
     conn = sa.create_engine(connstr)
 
     # Cap the previous centerline generations (see previous comment).
@@ -283,9 +283,9 @@ def update_zone(osmnx_name, name, centerlines=None, profile=None):
     finally:
         session.close()
 
-def show_zones(profile=None):
+def show_zones(profile):
     """Pretty-prints a list of zones in the database."""
-    session = db_sessionmaker(profile=profile)()
+    session = db_sessionmaker(profile)()
     zones = (session
         .query(Zone)
         .all()
@@ -327,10 +327,8 @@ def show_dbs():
     table.add_column("Type", justify="left")
     table.add_column("Connection String", justify="left")
     for profile in cfg:
-        if profile == 'DEFAULT':
-            continue
         connstr = cfg[profile]['connstr']
-        conntype = cfg[profile]['type']
+        conntype = cfg[profile]['conntype']
         table.add_row(profile, conntype, connstr)
     console.print(table)
 
@@ -339,10 +337,8 @@ def show_dbs():
     table.add_column("Type", justify="left")
     table.add_column("Connection Name", justify="left")
     for profile in cfg:
-        if profile == 'DEFAULT':
-            continue
         conname = cfg[profile]['conname']
-        conntype = cfg[profile]['type']
+        conntype = cfg[profile]['conntype']
         table.add_row(profile, conntype, conname)
     console.print(table)
 
@@ -366,8 +362,8 @@ def _validate_sector_geom(filepath):
         raise ValueError(f"Input sector has unsupported {sector_shape.geom_type} union type.")
     return sector_shape
 
-def insert_sector(sector_name, filepath, profile=None):
-    session = db_sessionmaker(profile=profile)()
+def insert_sector(sector_name, filepath, profile):
+    session = db_sessionmaker(profile)()
 
     if session.query(Sector).filter_by(name=sector_name).count() != 0:
         raise ValueError(
@@ -387,8 +383,8 @@ def insert_sector(sector_name, filepath, profile=None):
     finally:
         session.close()
 
-def delete_sector(sector_name, profile=None):
-    session = db_sessionmaker(profile=profile)()
+def delete_sector(sector_name, profile):
+    session = db_sessionmaker(profile)()
 
     sector = session.query(Sector).filter_by(name=sector_name).one_or_none()
     if sector is None:
@@ -403,9 +399,9 @@ def delete_sector(sector_name, profile=None):
     finally:
         session.close()
 
-def show_sectors(profile=None):
+def show_sectors(profile):
     """Pretty-prints a list of sectors in the database."""
-    session = db_sessionmaker(profile=profile)()
+    session = db_sessionmaker(profile)()
     
     sectors = session.query(Sector).all()
     if len(sectors) == 0:

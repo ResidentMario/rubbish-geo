@@ -19,14 +19,14 @@ def cli():
     pass
 
 @click.command(name="connect", short_help="Shell out to psql.")
-@click.option("-p", "--profile", help="Optional profile. If not set uses default profile.")
+@click.option("-p", "--profile", help="Connection profile to use. If not set uses default profile.")
 def connect(profile):
     sp = subprocess.run(["which", "psql"], capture_output=True)
     if sp.returncode != 0:
         print("psql not installed, install that first.")
         return
     psql = sp.stdout.decode("utf-8").rstrip()
-    connstr, conntype, _ = _get_db(profile=profile)
+    connstr, conntype, _ = _get_db(profile)
     if connstr == None:
         print("database not set, set that first with set_db")
         return

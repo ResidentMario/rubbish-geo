@@ -5,11 +5,29 @@ from unittest.mock import patch
 from datetime import datetime, timezone
 import random
 import os
+import pathlib
+import shutil
 
 from shapely.geometry import LineString
 
 from rubbish_geo_common.db_ops import reset_db
 from rubbish_geo_common.consts import RUBBISH_TYPES
+
+TEST_APP_DIR_TMPDIR = "/tmp/.rubbish_test_app_dir"
+
+def get_app_dir():
+    tmpdir = TEST_APP_DIR_TMPDIR
+    if not os.path.exists(tmpdir):
+        os.mkdir(tmpdir)
+    return pathlib.Path(tmpdir)
+
+def reset_app_dir(f):
+    def inner(*args, **kwargs):
+        tmpdir = TEST_APP_DIR_TMPDIR
+        if os.path.exists(tmpdir):
+            shutil.rmtree(tmpdir, ignore_errors=True)  # S0#303225
+        f(*args, **kwargs)
+    return inner
 
 def get_db(profile=None):
     if 'RUBBISH_GEO_ENV' not in os.environ or os.environ['RUBBISH_GEO_ENV'] == 'local':
@@ -34,7 +52,7 @@ def clean_db(f):
     """
     def inner(*args, **kwargs):
         with patch('rubbish_geo_common.db_ops.get_db', new=get_db):
-            reset_db()
+            reset_db('local')
             f(*args, **kwargs)
     return inner
 
@@ -93,7 +111,9 @@ def insert_grid(f):
     grid = get_grid()
     def inner(*args, **kwargs):
         with patch('rubbish_geo_common.db_ops.get_db', new=get_db):
-            update_zone("Grid City, California", "Grid City, California", centerlines=grid)
+            update_zone(
+                "Grid City, California", "Grid City, California", 'local', centerlines=grid
+            )
         f(*args, **kwargs)
     return inner
 
