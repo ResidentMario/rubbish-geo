@@ -1,5 +1,6 @@
 """
-Admin methods for interacting with zones.
+Admin methods for interacting with the database. These methods are intended to be used
+interactively via the rubbish-admin CLI.
 """
 import os
 from datetime import datetime
@@ -16,9 +17,7 @@ from shapely.geometry import Polygon
 from rich.console import Console
 from rich.table import Table
 
-from rubbish_geo_common.db_ops import (
-    db_sessionmaker, get_db, get_db_cfg, OptionalCloudSQLProxyProcess
-)
+from rubbish_geo_common.db_ops import db_sessionmaker, get_db_cfg, OptionalCloudSQLProxyProcess
 from rubbish_geo_common.orm import Zone, ZoneGeneration, Centerline, Sector
 
 def _get_name_for_centerline_edge(G, u, v):
@@ -206,9 +205,6 @@ def update_zone(osmnx_name, name, profile, centerlines=None, wait=5, force_downl
         bbox = f'SRID=4326;{str(poly)}'
         zone.bounding_box = bbox
 
-        connstr, _, _ = get_db(profile)
-        conn = sa.create_engine(connstr)
-
         # Cap the previous centerline generations (see previous comment).
         previously_current_centerlines = (session
             .query(Centerline)
@@ -231,16 +227,16 @@ def update_zone(osmnx_name, name, profile, centerlines=None, wait=5, force_downl
         session.add(zone)
         session.add(zone_generation)
 
+        engine = session.bind
         try:
             session.commit()
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore')
-                centerlines.to_postgis("centerlines", conn, if_exists="append")
+                centerlines.to_postgis("centerlines", engine, if_exists="append")
         except:
             session.rollback()
             raise
         finally:
-            engine = session.bind
             session.close()
             engine.dispose()
 
@@ -393,6 +389,4 @@ def show_sectors(profile, wait=5, force_download=False):
             session.close()
             engine.dispose()
 
-__all__ = [
-    'update_zone', 'show_zones', 'insert_sector', 'delete_sector', 'show_sectors'
-]
+__all__ = ['update_zone', 'show_zones', 'insert_sector', 'delete_sector', 'show_sectors']
