@@ -79,9 +79,10 @@ exports.proxy_POST_PICKUPS = functions.runWith(opts).firestore.document('/Rubbis
         return null;  // sentinal value for filter(v => v)
       }
 
-      // The curb is allowed to be empty. Runs that predate this service lack one. The analytics
-      // service will attempt to use the distribution of the data to guess its value.
-      const curb = ("curb" in photoStoryData) ? photoStoryData.curb : null;
+      // NOTE(aleksey): The curb is allowed to be empty. Runs that predate this service lack one.
+      // NOTE(aleksey): The user database calls this field "roadSnapping". We rename the field to
+      // curb here, because that is a much better name. It'd be nice if we used curb everywhere.
+      const curb = ("roadSnapping" in photoStoryData) ? photoStoryData.roadSnapping : null;
 
       firebaseRunID = photoStoryData.photoStoryID;
       const type = photoStoryData.rubbishType;
