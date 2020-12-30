@@ -8,10 +8,12 @@ import subprocess
 import warnings
 import time
 
-from rubbish_geo_common.db_ops import set_db as _set_db, reset_db as _reset_db, get_db as _get_db
+from rubbish_geo_common.db_ops import (
+    set_db as _set_db, reset_db as _reset_db, get_db as _get_db, run_cloud_sql_proxy
+)
 from .ops import (
     update_zone as _update_zone, insert_sector as _insert_sector, delete_sector as _delete_sector,
-    show_sectors as _show_sectors, show_zones as _show_zones, show_dbs, run_cloud_sql_proxy
+    show_sectors as _show_sectors, show_zones as _show_zones, show_dbs
 )
 
 @click.group()
@@ -19,8 +21,11 @@ def cli():
     pass
 
 @click.command(name="connect", short_help="Shell out to psql.")
-@click.option("-p", "--profile", help="Connection profile to use. If not set uses default profile.")
-def connect(profile):
+@click.argument("profile")
+@click.option(
+    "-w", "--wait", default=5, help="How long to wait for Cloud SQL Proxy to initialize (if needed)."
+)
+def connect(profile, wait):
     sp = subprocess.run(["which", "psql"], capture_output=True)
     if sp.returncode != 0:
         print("psql not installed, install that first.")
@@ -45,8 +50,9 @@ def connect(profile):
             "$ kill -s SIGTERM $PID\n"
             "A more elegant way of doing this is a TODO."
         )
-        time.sleep(5)
+        time.sleep(wait)
         # cloud_sql_proxy_process.terminate()
+        print(f"Finished waiting, continuing execution...")
     os.execl(psql, psql, connstr)
 
 @click.command(name="get-db", short_help="Prints the DB connection strings.")
@@ -71,54 +77,71 @@ def get_db(profile):
 @click.command(name="set-db", short_help="Set the DB connection string.")
 @click.argument("dbstr")
 @click.argument("conntype")
+@click.argument("profile")
 @click.option("-c", "--conname", help="Optional connection name. Required if conntype is GCP.")
-@click.option("-p", "--profile", help="Optional profile. If not set uses default profile.")
-def set_db(dbstr, conntype, conname, profile):
-    _set_db(dbstr, conntype, conname, profile=profile)
+def set_db(dbstr, conntype, profile, conname):
+    _set_db(dbstr=dbstr, conntype=conntype, conname=conname, profile=profile)
 
 @click.command(name="reset-db", short_help="Reset the DB.")
-@click.option("-p", "--profile", help="Optional profile. If not set uses default profile.")
-def reset_db(profile):
+@click.argument("profile")
+@click.option(
+    "-w", "--wait", default=5, help="How long to wait for Cloud SQL Proxy to initialize (if needed)."
+)
+def reset_db(profile, wait):
     y_n = input("This will delete ALL data currently in the database. Are you sure? [Y/n]: ")
     if y_n == "y" or y_n == "yes" or y_n == "Y":
-        _reset_db(profile=profile)
+        _reset_db(profile=profile, wait=wait)
     elif y_n == "n" or y_n == "no":
         return
     else:
-        print("invalid input, must reply y/n")
-    pass
+        print("invalid input, must reply [Y/n].")
 
 @click.command(name="update-zone", short_help="Write a new zone generation in and reticulates.")
+@click.argument("profile")
 @click.argument("osmnx_name")
 @click.option("-n", "--name", help="Optional name, otherwise copies osmnx_name.", default=None)
-@click.option("-p", "--profile", help="Optional profile. If not set uses default profile.")
-def update_zone(osmnx_name, name, profile):
+@click.option(
+    "-w", "--wait", default=5, help="How long to wait for Cloud SQL Proxy to initialize (if needed)."
+)
+def update_zone(profile, osmnx_name, name, wait):
     if name is None:
         name = osmnx_name
-    _update_zone(osmnx_name, name, profile=profile)
+    _update_zone(osmnx_name=osmnx_name, name=name, profile=profile, wait=wait)
 
 @click.command(name="show-zones", short_help="Pretty-prints zones in the database.")
-@click.option("-p", "--profile", help="Optional profile. If not set uses default profile.")
-def show_zones(profile):
-    _show_zones(profile=profile)
+@click.argument("profile")
+@click.option(
+    "-w", "--wait", default=5, help="How long to wait for Cloud SQL Proxy to initialize (if needed)."
+)
+def show_zones(profile, wait):
+    _show_zones(profile=profile, wait=wait)
 
 @click.command(name="insert-sector", short_help="Inserts a new sector into the database.")
+@click.argument("profile")
 @click.argument("sector_name")
 @click.argument("filepath")
-@click.option("-p", "--profile", help="Optional profile. If not set uses default profile.")
-def insert_sector(sector_name, filepath, profile):
-    _insert_sector(sector_name, filepath, profile)
+@click.option(
+    "-w", "--wait", default=5, help="How long to wait for Cloud SQL Proxy to initialize (if needed)."
+)
+def insert_sector(profile, sector_name, filepath, wait):
+    _insert_sector(sector_name=sector_name, filepath=filepath, profile=profile, wait=wait)
 
 @click.command(name="delete-sector", short_help="Deletes a sector from the database.")
-@click.option("-p", "--profile", help="Optional profile. If not set uses default profile.")
+@click.argument("profile")
 @click.argument("sector_name")
-def delete_sector(sector_name, profile):
-    _delete_sector(sector_name, profile=profile)
+@click.option(
+    "-w", "--wait", default=5, help="How long to wait for Cloud SQL Proxy to initialize (if needed)."
+)
+def delete_sector(profile, sector_name, wait):
+    _delete_sector(sector_name=sector_name, profile=profile, wait=wait)
 
 @click.command(name="show-sectors", short_help="Pretty-prints sectors in the database.")
-@click.option("-p", "--profile", help="Optional profile. If not set uses default profile.")
-def show_sectors(profile):
-    _show_sectors(profile=profile)
+@click.argument("profile")
+@click.option(
+    "-w", "--wait", default=5, help="How long to wait for Cloud SQL Proxy to initialize (if needed)."
+)
+def show_sectors(profile, wait):
+    _show_sectors(profile=profile, wait=wait)
 
 cli.add_command(connect)
 cli.add_command(get_db)
