@@ -79,7 +79,7 @@ def upgrade():
         sa.Column("geometry", Geometry("POINT", srid=4326), nullable=False),
         sa.Column("snapped_geometry", Geometry("POINT", srid=4326), nullable=False),
         sa.Column("linear_reference", sa.Float(precision=3), nullable=False),
-        sa.Column("curb", ENUM('left', 'right', 'center', name='curb'), nullable=False)
+        sa.Column("curb", ENUM('left', 'right', 'middle', name='curb'), nullable=False)
     )
     # Blockfaces are a psuedo-virtual table defined by the combination of {centerline,curb}.
     # A centerline will typically have two blockfaces: one for the left side of the street and
@@ -91,7 +91,7 @@ def upgrade():
         "blockface_statistics",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("centerline_id", sa.Integer, sa.ForeignKey("centerlines.id"), nullable=False),
-        sa.Column("curb", ENUM('left', 'right', 'center', name='curb'), nullable=False),
+        sa.Column("curb", ENUM('left', 'right', 'middle', name='curb'), nullable=False),
         sa.Column("rubbish_per_meter", sa.Float, nullable=False, index=True),
         sa.Column("num_runs", sa.Integer, nullable=False)
     )

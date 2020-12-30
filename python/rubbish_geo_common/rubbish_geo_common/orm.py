@@ -78,7 +78,7 @@ class Pickup(Base):
     geometry = sa.Column("geometry", Geometry("POINT"), nullable=False)
     snapped_geometry = sa.Column("snapped_geometry", Geometry("POINT"), nullable=False)
     linear_reference = sa.Column("linear_reference", sa.Float(precision=3), nullable=False)
-    curb = sa.Column("curb", ENUM('left', 'right', 'center', name='curb'), nullable=False)
+    curb = sa.Column("curb", ENUM('left', 'right', 'middle', name='curb'), nullable=False)
     centerline = relationship("Centerline", back_populates="pickups")
 
     def __repr__(self):
@@ -96,7 +96,7 @@ class BlockfaceStatistic(Base):
     id = sa.Column("id", sa.Integer, primary_key=True)
     centerline_id =\
         sa.Column("centerline_id", sa.Integer, sa.ForeignKey("centerlines.id"), nullable=False)
-    curb = sa.Column("curb", ENUM('left', 'right', 'center', name='curb'), nullable=False)
+    curb = sa.Column("curb", ENUM('left', 'right', 'middle', name='curb'), nullable=False)
     rubbish_per_meter = sa.Column("rubbish_per_meter", sa.Float, nullable=False)
     num_runs = sa.Column("num_runs", sa.Integer, nullable=False)
     centerline = relationship("Centerline", back_populates="blockface_statistics")
