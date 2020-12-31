@@ -18,7 +18,5 @@ docker run -d \
     -e POSTGRES_PASSWORD=polkstreet \
     -p 5432:5432 rubbish-db:latest
 ./wait_for_postgres.sh
-pushd ../python/migrations && \
-    docker exec -it rubbish-db-container alembic -c test_alembic.ini upgrade head && \
-    popd
+docker exec -it rubbish-db-container alembic -c test_alembic.ini upgrade head && \
 echo "PostGIS ready!"
