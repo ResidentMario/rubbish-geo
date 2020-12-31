@@ -61,4 +61,5 @@ pushd $RUBBISH_BASE_DIR/js 1>&0 && npm run test:dev && popd 1>&0
 
 echo "Hint. To verify that the database listener test succeeded, run: "
 echo "$ gcloud logging read projects/$GCP_PROJECT/logs/functional_api --freshness=5m"
-echo "Note that it may take some time for logs to propagate."
+echo "Note that it may take some time for logs to propagate. If this record only has log-level "
+echo "messages, e.g. no error-level messages, the test succeeded."

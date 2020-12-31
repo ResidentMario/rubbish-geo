@@ -69,7 +69,6 @@ cp $RUBBISH_BASE_DIR/python/alembic.ini $TMPDIR/alembic.ini
 cat $TMPDIR/alembic.ini | \
     sed -E "s|sqlalchemy.url = [a-zA-Z:/_0-9@\.-]*|sqlalchemy.url = $RW_RUBBISH_DB_CONNSTR|" > \
     $TMPDIR/remote_alembic.ini
-pushd $TMPDIR && alembic -c remote_alembic.ini downgrade base && popd
 pushd $TMPDIR && alembic -c remote_alembic.ini upgrade head && popd
 
 # NOTE(aleksey): connecting to this instance requires cloud_sql_proxy.
