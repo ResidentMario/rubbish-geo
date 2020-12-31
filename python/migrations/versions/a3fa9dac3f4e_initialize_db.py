@@ -91,7 +91,7 @@ def upgrade():
         "blockface_statistics",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("centerline_id", sa.Integer, sa.ForeignKey("centerlines.id"), nullable=False),
-        sa.Column("curb", ENUM('left', 'right', 'middle', name='curb'), nullable=False),
+        sa.Column("curb", ENUM('left', 'right', 'center', name='curb'), nullable=False),
         sa.Column("rubbish_per_meter", sa.Float, nullable=False, index=True),
         sa.Column("num_runs", sa.Integer, nullable=False)
     )
@@ -103,3 +103,5 @@ def downgrade():
     op.drop_table("sectors")
     op.drop_table("zone_generations")
     op.drop_table("zones")
+    op.execute("DROP TYPE curb")
+    op.execute("DROP TYPE rubbish_type")

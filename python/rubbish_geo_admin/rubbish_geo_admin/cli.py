@@ -75,12 +75,12 @@ def get_db(profile):
             print("Connection string not set.")
 
 @click.command(name="set-db", short_help="Set the DB connection string.")
-@click.argument("dbstr")
-@click.argument("conntype")
 @click.argument("profile")
+@click.argument("connstr")
+@click.argument("conntype")
 @click.option("-c", "--conname", help="Optional connection name. Required if conntype is GCP.")
-def set_db(dbstr, conntype, profile, conname):
-    _set_db(dbstr=dbstr, conntype=conntype, conname=conname, profile=profile)
+def set_db(profile, connstr, conntype, conname):
+    _set_db(connstr=connstr, conntype=conntype, conname=conname, profile=profile)
 
 @click.command(name="reset-db", short_help="Reset the DB.")
 @click.argument("profile")

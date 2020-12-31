@@ -65,19 +65,20 @@ echo "Running database migrations...💩"
 pushd ../ 1>&0 && RUBBISH_BASE_DIR=$(echo $PWD) && popd 1>&0
 TMPDIR=$(mktemp -d /tmp/rubbish_geo_functional_api.XXXXXX)
 cp -rf $RUBBISH_BASE_DIR/python/migrations/ $TMPDIR/migrations
-cat $TMPDIR/migrations/alembic.ini | \
+cp $RUBBISH_BASE_DIR/python/alembic.ini $TMPDIR/alembic.ini
+cat $TMPDIR/alembic.ini | \
     sed -E "s|sqlalchemy.url = [a-zA-Z:/_0-9@\.-]*|sqlalchemy.url = $RW_RUBBISH_DB_CONNSTR|" > \
-    $TMPDIR/migrations/remote_alembic.ini
-pushd $TMPDIR && alembic -c migrations/remote_alembic.ini upgrade head && popd
+    $TMPDIR/remote_alembic.ini
+pushd $TMPDIR && alembic -c remote_alembic.ini upgrade head && popd
 
 # NOTE(aleksey): connecting to this instance requires cloud_sql_proxy.
 echo "Adding this database to your local database profiles...✏️"
 CONNAME=$(gcloud sql instances describe $INSTANCE_NAME --format=json | jq -r '.connectionName')
 rubbish-admin set-db \
+    $RUBBISH_GEO_ENV \
     postgresql://read_write:$RUBBISH_GEO_READ_WRITE_USER_PASSWORD@localhost:5432/rubbish \
     gcp \
-    --conname $CONNAME \
-    --profile $RUBBISH_GEO_ENV
+    --conname $CONNAME
 
 echo "Done! If this database is local you can now connect to it by running: "
 echo "\$ rubbish-admin connect --profile $RUBBISH_GEO_ENV"
