@@ -39,7 +39,16 @@ def get_db(profile=None):
                 f"{os.environ['RUBBISH_GEO_ENV']!r}, but the 'RUBBISH_POSTGIS_CONNSTR' value "
                 f"is unset. Set this value to the correct PostGIS instance connection string."
             )
-        return os.environ['RUBBISH_POSTGIS_CONNSTR'], "gcp", "unset"
+        if 'RUBBISH_POSTGIS_CONNECTION_NAME' not in os.environ:
+            raise ValueError(
+                f"The 'RUBBISH_GEO_ENV' environment variable is set to non 'local' value "
+                f"{os.environ['RUBBISH_GEO_ENV']!r}, but the 'RUBBISH_POSTGIS_CONNECTION_NAME' "
+                f"value is unset. Set this value to the correct GCP connection name."
+            )
+        return (
+            os.environ['RUBBISH_POSTGIS_CONNSTR'], "gcp",
+            os.environ['RUBBISH_POSTGIS_CONNECTION_NAME']
+        )
     else:
         raise ValueError(
             f"'RUBBISH_GEO_ENV' must be set to one of 'local' or 'dev', but found value "

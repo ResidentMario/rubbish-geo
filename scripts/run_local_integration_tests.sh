@@ -49,3 +49,6 @@ npm run-script --prefix $RUBBISH_BASE_DIR/js/ test:local || true
 
 echo "Shutting down emulators..."
 kill -s SIGSTOP %1 %2
+
+echo "Stopping PostGIS container."
+docker stop rubbish-db-container

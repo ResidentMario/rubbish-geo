@@ -67,7 +67,7 @@ def run_cloud_sql_proxy(profile, force_download=False):
 
     _, _, conname = get_db(profile)
     popen = subprocess.Popen([f"{outpath.as_posix()}", f"-instances={conname}=tcp:5432"])
-    print("Launched cloud_sql_proxy process with PID {popen.pid}.")
+    print(f"Launched cloud_sql_proxy process with PID {popen.pid}.")
     return popen
 
 def shut_down_cloud_sql_proxy(popen):

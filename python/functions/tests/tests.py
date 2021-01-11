@@ -259,3 +259,14 @@ class Test_GET_run(unittest.TestCase):
         result = response.json()
 
         assert result is not None
+
+# NOTE(aleksey): this test case is a  bit of a hack. This special test inserts the test grid
+# into the database and then immediately exits. This is used by the dev integration test script
+# to put the dev dataset into a known good state, one in which writes should land.
+# TODO: make this a fixture instead of a test.
+class Test_insert_grid(unittest.TestCase):
+    @clean_db
+    @alias_test_db
+    @insert_grid
+    def testGetRun(self):
+        pass
