@@ -123,7 +123,7 @@ def POST_pickups(request):
                 })
                 pickup['type'] = 'other'
         try:
-            write_pickups(run, RUBBISH_GEO_ENV)
+            write_pickups(run, RUBBISH_GEO_ENV, logger=logger)
         except:
             logger.log_struct({
                 "level": "error",

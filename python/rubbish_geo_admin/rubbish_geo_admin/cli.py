@@ -45,13 +45,10 @@ def connect(profile, wait):
         print("Waiting five seconds for cloud_sqp_proxy to start...")
         print(
             "WARNING: after exiting psql you will still have a cloud_sql_proxy listener on "
-            "port 5432. To get rid of it find the PID of the process and kill it manually:\n"
-            "$ lsof -i tcp:5432\n"
-            "$ kill -s SIGTERM $PID\n"
-            "A more elegant way of doing this is a TODO."
+            "port 5432. To get rid of it:\n"
+            f"$ kill -s SIGTERM {cloud_sql_proxy_process.pid}."
         )
         time.sleep(wait)
-        # cloud_sql_proxy_process.terminate()
         print(f"Finished waiting, continuing execution...")
     os.execl(psql, psql, connstr)
 

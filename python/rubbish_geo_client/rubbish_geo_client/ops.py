@@ -124,24 +124,45 @@ def nearest_centerline_to_point(point_geom, session, rank=0, check_distance=Fals
             )
     return match
 
-def write_pickups(pickups, profile, check_distance=True):
+def write_pickups(pickups, profile, check_distance=True, logger=None):
     """
-    Writes pickups to the database. Pickups is expected to be a list of entries in the format:
+    Writes pickups to the database. This method hosts the primary logic for the overall service's
+    POST path.
 
-    ```
-    {"firebase_id": <str>,
-     "firebase_run_id": <str>,
-     "type": <str, from RUBBISH_TYPES>,
-     "timestamp": <int; UTC UNIX timestamp>,
-     "curb": <{left, right, middle, None}; user statement of side of the street>,
-     "geometry": <str; POINT in WKT format>}
-    ```
+    Parameters
+    ----------
+    pickups: list
+        A `list` of pickups. Each entry in the list is expected to be a `dict` in the following
+        format:
 
-    All other keys included in the dict will be silently ignored.
+        ```
+        {"firebase_id": <str>,
+        "firebase_run_id": <str>,
+        "type": <str, from RUBBISH_TYPES>,
+        "timestamp": <int; UTC UNIX timestamp>,
+        "curb": <{left, right, middle, None}>,
+        "geometry": <str; POINT in WKT format>}
+        ```
 
-    This list is to correspond with a single rubbish run, with items sequenced in the order in
-    which the pickups were made.
+        The list is to contain *all* pickups associated with an individual run.
+    profile: str
+        The name of the database write_pickups will write to. This named database must either be
+        present on disk (written to `$HOME/.rubbish/config`, either manually or using the `set-db`
+        admin CLI command), or its connection information must be set using the 
+        `RUBBISH_POSTGIS_CONNSTR` environment variable.
+    check_distance: bool, default `True`
+        If set to `False`, the points will be matched to the nearest centerline in the database,
+        regardless of distance. If `True`, points that are too far from any centerlines in the
+        database (according to a heuristic threshold) will be discarded. This value should always
+        be set to `True` in `prod`, but may be set to `False` for local testing purposes.
+    logger: LogHandler object or None
+        If set, this method will write logs using this log handler. See the definition of
+        `LogHandler` in `python/functions/main.py`. If not set, logging is omitted.
     """
+    # TODO: add debug-level logging. The logger is already being passed down by the function.
+    # if logger is not None:
+    #     logger.log_struct({"level": "debug", "message": "Got to write_pickups."})
+
     if len(pickups) == 0:
         return
 

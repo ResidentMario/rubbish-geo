@@ -11,7 +11,7 @@ if [[ ! -z "$POSTGRES_DB_IS_UP" ]]; then
     docker rm rubbish-db-container
 fi
 echo "Starting new PostGIS database container..."
-docker run -d \
+docker run -d --rm \
     --name rubbish-db-container \
     -e POSTGRES_DB=rubbish \
     -e POSTGRES_USER=rubbish-test-user \

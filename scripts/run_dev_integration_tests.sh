@@ -48,18 +48,15 @@ GCP_PROJECT=$(gcloud config get-value project)
 REGION=us-central1  # currently a hardcoded value
 GET_URL=https://$REGION-$GCP_PROJECT.cloudfunctions.net/GET
 
-echo "Running functional API integration tests..."
+echo "Running functional API GET integration tests..."
 FUNCTIONAL_API_HOST=$GET_URL RUBBISH_POSTGIS_CONNSTR=$RUBBISH_POSTGIS_CONNSTR \
     pytest $RUBBISH_BASE_DIR/python/functions/tests/tests.py -k GET || true
 
-echo "Shutting down cloud sql proxy..."
-# NOTE(aleksey): if you ever need to kill manually see https://stackoverflow.com/a/3855359/1993206
-kill -s SIGSTOP %1
-
 echo "Running database listener integration tests..."
-pushd $RUBBISH_BASE_DIR/js 1>&0 && npm run test:dev && popd 1>&0
+RUBBISH_POSTGIS_CONNSTR=$RUBBISH_POSTGIS_CONNSTR \
+    pytest $RUBBISH_BASE_DIR/python/functions/tests/tests.py -k Test_insert_grid || true
+npm run-script --prefix $RUBBISH_BASE_DIR/js/ test:dev || true
 
-echo "Hint. To verify that the database listener test succeeded, run: "
-echo "$ gcloud logging read projects/$GCP_PROJECT/logs/functional_api --freshness=5m"
-echo "Note that it may take some time for logs to propagate. If this record only has log-level "
-echo "messages, e.g. no error-level messages, the test succeeded."
+# NOTE(aleksey): if you ever need to kill manually see https://stackoverflow.com/a/3855359/1993206
+echo "Shutting down cloud sql proxy..."
+kill -s SIGSTOP %1
