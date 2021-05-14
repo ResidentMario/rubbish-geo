@@ -285,6 +285,11 @@ def show_dbs():
     table.add_column("Type", justify="left")
     table.add_column("Connection String", justify="left")
     for profile in cfg:
+        # NOTE(aleksey): the Python config parser always includes a DEFAULT top-level config,
+        # even when no such profile is populated in the file itself.
+        if profile == 'DEFAULT':
+            continue
+
         connstr = cfg[profile]['connstr']
         conntype = cfg[profile]['conntype']
         table.add_row(profile, conntype, connstr)
@@ -295,6 +300,9 @@ def show_dbs():
     table.add_column("Type", justify="left")
     table.add_column("Connection Name", justify="left")
     for profile in cfg:
+        if profile == 'DEFAULT':
+            continue
+
         conname = cfg[profile]['conname']
         conntype = cfg[profile]['conntype']
         table.add_row(profile, conntype, conname)
